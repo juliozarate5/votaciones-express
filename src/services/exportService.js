@@ -9,8 +9,9 @@ function stamp() {
 }
 
 /**
- * Prioridad: si hay total final, usa el último final (ya incluye voto a voto posterior);
- * si no, usa en vivo.
+ * Totales reportados por persona:
+ * - Si hay total final, usa ese (ya incluye voto a voto posterior).
+ * - Si no, usa el conteo voto a voto.
  */
 function toOfficialReport(summary) {
   const rows = (summary.rows || []).map((row) => {
@@ -22,9 +23,7 @@ function toOfficialReport(summary) {
         women: row.totalWomen || 0,
         men: row.totalMen || 0,
         total: row.totalVotes || 0,
-        source: 'final',
-        sourceLabel: 'Total final',
-        reportedAt: row.lastTotalAt || null,
+        reportedAt: row.lastTotalAt || row.lastRealtimeAt || null,
       };
     }
 
@@ -33,8 +32,6 @@ function toOfficialReport(summary) {
       women: row.realtimeFemale || 0,
       men: row.realtimeMale || 0,
       total: row.realtimeTotal || 0,
-      source: 'realtime',
-      sourceLabel: 'En vivo',
       reportedAt: row.lastRealtimeAt || null,
     };
   });
@@ -44,11 +41,9 @@ function toOfficialReport(summary) {
       acc.women += row.women;
       acc.men += row.men;
       acc.total += row.total;
-      if (row.source === 'final') acc.fromFinal += 1;
-      else acc.fromRealtime += 1;
       return acc;
     },
-    { women: 0, men: 0, total: 0, fromFinal: 0, fromRealtime: 0 }
+    { women: 0, men: 0, total: 0 }
   );
 
   return { rows, grand };
@@ -60,13 +55,12 @@ async function buildExcelBuffer(summary) {
   workbook.creator = 'Reporte de Votaciones';
   workbook.created = new Date();
 
-  const sheet = workbook.addWorksheet('Reporte oficial');
+  const sheet = workbook.addWorksheet('Totales reportados');
   sheet.columns = [
     { header: 'Persona', key: 'reporterName', width: 24 },
     { header: 'Mujeres', key: 'women', width: 12 },
     { header: 'Hombres', key: 'men', width: 12 },
     { header: 'Total', key: 'total', width: 12 },
-    { header: 'Origen', key: 'sourceLabel', width: 14 },
     { header: 'Fecha/hora', key: 'reportedAtLabel', width: 22 },
   ];
 
@@ -89,7 +83,6 @@ async function buildExcelBuffer(summary) {
     women: official.grand.women,
     men: official.grand.men,
     total: official.grand.total,
-    sourceLabel: '',
     reportedAtLabel: '',
   });
   totalRow.font = { bold: true };
@@ -101,16 +94,10 @@ async function buildExcelBuffer(summary) {
   ];
   meta.getRow(1).font = { bold: true };
   meta.addRows([
-    { metric: 'Mujeres (oficial)', value: official.grand.women },
-    { metric: 'Hombres (oficial)', value: official.grand.men },
-    { metric: 'Total votos (oficial)', value: official.grand.total },
-    { metric: 'Reporteros con total final', value: official.grand.fromFinal },
-    { metric: 'Reporteros solo en vivo', value: official.grand.fromRealtime },
+    { metric: 'Mujeres', value: official.grand.women },
+    { metric: 'Hombres', value: official.grand.men },
+    { metric: 'Total votos', value: official.grand.total },
     { metric: 'Reporteros', value: official.rows.length },
-    {
-      metric: 'Regla',
-      value: 'Si hay total final se usa ese; si no, se usa en vivo',
-    },
     { metric: 'Generado', value: new Date().toLocaleString('es-CO') },
   ]);
 
@@ -127,28 +114,21 @@ function buildPdfBuffer(summary) {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    doc.fillColor('#0f4c5c').fontSize(18).text('Reporte de Votaciones — Oficial', { align: 'left' });
+    doc.fillColor('#0f4c5c').fontSize(18).text('Reporte de Votaciones', { align: 'left' });
     doc.moveDown(0.3);
     doc.fillColor('#64748b').fontSize(10).text(`Generado: ${new Date().toLocaleString('es-CO')}`);
-    doc.moveDown(0.2);
-    doc
-      .fontSize(9)
-      .text('Prioridad: total final. Si no hay final, se usa reporte en vivo.');
     doc.moveDown(0.8);
 
-    doc.fillColor('#0a2f38').fontSize(11).text('Resumen oficial');
+    doc.fillColor('#0a2f38').fontSize(11).text('Totales reportados');
     doc.moveDown(0.3);
     doc.fontSize(9).fillColor('#334155');
     doc.text(
       `Mujeres ${official.grand.women} · Hombres ${official.grand.men} · Total ${official.grand.total}`
     );
-    doc.text(
-      `Con final: ${official.grand.fromFinal} · Solo en vivo: ${official.grand.fromRealtime}`
-    );
     doc.moveDown(0.8);
 
-    const headers = ['Persona', 'Mujeres', 'Hombres', 'Total', 'Origen', 'Fecha/hora'];
-    const colWidths = [110, 55, 55, 50, 70, 120];
+    const headers = ['Persona', 'Mujeres', 'Hombres', 'Total', 'Fecha/hora'];
+    const colWidths = [130, 60, 60, 55, 130];
     const startX = doc.x;
     let y = doc.y;
 
@@ -164,7 +144,7 @@ function buildPdfBuffer(summary) {
         }
         doc.text(String(cell), x + 3, y, {
           width: colWidths[i] - 6,
-          align: i === 0 || i >= 4 ? 'left' : 'right',
+          align: i === 0 || i === 4 ? 'left' : 'right',
         });
         x += colWidths[i];
       });
@@ -186,13 +166,12 @@ function buildPdfBuffer(summary) {
         row.women,
         row.men,
         row.total,
-        row.sourceLabel,
         formatDateTime(row.reportedAt),
       ]);
     });
 
     drawRow(
-      ['TOTAL', official.grand.women, official.grand.men, official.grand.total, '', ''],
+      ['TOTAL', official.grand.women, official.grand.men, official.grand.total, ''],
       { bold: true }
     );
 
@@ -201,34 +180,20 @@ function buildPdfBuffer(summary) {
 }
 
 function chartPayload(summary) {
-  const labels = summary.rows.map((r) => r.reporterName);
+  const official = toOfficialReport(summary);
   return {
-    byUserRealtime: {
-      labels,
-      female: summary.rows.map((r) => r.realtimeFemale),
-      male: summary.rows.map((r) => r.realtimeMale),
-      total: summary.rows.map((r) => r.realtimeTotal),
+    byUser: {
+      labels: official.rows.map((r) => r.reporterName),
+      female: official.rows.map((r) => r.women),
+      male: official.rows.map((r) => r.men),
+      total: official.rows.map((r) => r.total),
     },
-    byUserFinal: {
-      labels,
-      women: summary.rows.map((r) => r.totalWomen),
-      men: summary.rows.map((r) => r.totalMen),
-      total: summary.rows.map((r) => r.totalVotes),
-    },
-    genderRealtime: {
+    gender: {
       labels: ['Mujeres', 'Hombres'],
-      values: [summary.grand.realtimeFemale, summary.grand.realtimeMale],
+      values: [official.grand.women, official.grand.men],
     },
-    genderFinal: {
-      labels: ['Mujeres', 'Hombres'],
-      values: [summary.grand.totalWomen, summary.grand.totalMen],
-    },
-    modeComparison: {
-      labels: ['Tiempo real', 'Total final'],
-      values: [summary.grand.realtimeTotal, summary.grand.totalVotes],
-    },
-    grand: summary.grand,
-    reporters: summary.rows.length,
+    grand: official.grand,
+    reporters: official.rows.length,
   };
 }
 

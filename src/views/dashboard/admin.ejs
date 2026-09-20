@@ -3,7 +3,7 @@
     <div>
       <%- include('../partials/back-link', { backHref: '/menu', backLabel: 'Volver al menú' }) %>
       <h1 class="mt-1 text-2xl font-semibold text-brand-900">Reporte de todos</h1>
-      <p class="mt-1 text-sm text-slate-600">Consola admin: tiempo real y totales finales por persona.</p>
+      <p class="mt-1 text-sm text-slate-600">Totales reportados por persona.</p>
     </div>
     <div class="flex flex-wrap gap-2">
       <a href="/dashboard/stats" class="action-btn action-btn-secondary">Dashboard</a>
@@ -16,105 +16,49 @@
   <div class="mb-2 print-only">
     <h1 class="text-xl font-bold text-brand-900">Reporte oficial de Votaciones</h1>
     <p class="text-sm text-slate-600">Generado: <%= new Date().toLocaleString('es-CO') %></p>
-    <p class="text-xs text-slate-500">Prioridad: total final. Si no hay final, se usa en vivo.</p>
   </div>
 
-  <div class="mb-6 space-y-4 screen-only">
-    <div class="rounded-2xl border-2 border-sky-200 bg-sky-50/60 p-4">
-      <h2 class="mb-3 text-base font-bold text-sky-900">En vivo (tiempo real)</h2>
-      <div class="grid grid-cols-3 gap-3">
-        <div class="stat-box border-sky-100">
-          <p class="stat-label">Mujeres</p>
-          <p class="stat-value text-sky-800"><%= summary.grand.realtimeFemale %></p>
-        </div>
-        <div class="stat-box border-sky-100">
-          <p class="stat-label">Hombres</p>
-          <p class="stat-value text-sky-800"><%= summary.grand.realtimeMale %></p>
-        </div>
-        <div class="stat-box border-sky-100">
-          <p class="stat-label">Total</p>
-          <p class="stat-value text-accent-500"><%= summary.grand.realtimeTotal %></p>
-        </div>
-      </div>
+  <div class="mb-6 grid grid-cols-3 gap-3">
+    <div class="stat-box">
+      <p class="stat-label">Mujeres</p>
+      <p class="stat-value text-brand-700"><%= official.grand.women %></p>
     </div>
-
-    <div class="flex items-center gap-3 px-1" aria-hidden="true">
-      <span class="h-px flex-1 bg-slate-300"></span>
-      <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">y</span>
-      <span class="h-px flex-1 bg-slate-300"></span>
+    <div class="stat-box">
+      <p class="stat-label">Hombres</p>
+      <p class="stat-value text-brand-700"><%= official.grand.men %></p>
     </div>
-
-    <div class="rounded-2xl border-2 border-amber-200 bg-amber-50/60 p-4">
-      <h2 class="mb-3 text-base font-bold text-amber-900">Total final (válido)</h2>
-      <div class="grid grid-cols-3 gap-3">
-        <div class="stat-box border-amber-100">
-          <p class="stat-label">Mujeres</p>
-          <p class="stat-value text-amber-900"><%= summary.grand.totalWomen %></p>
-        </div>
-        <div class="stat-box border-amber-100">
-          <p class="stat-label">Hombres</p>
-          <p class="stat-value text-amber-900"><%= summary.grand.totalMen %></p>
-        </div>
-        <div class="stat-box border-amber-100">
-          <p class="stat-label">Total</p>
-          <p class="stat-value text-accent-500"><%= summary.grand.totalVotes %></p>
-        </div>
-      </div>
+    <div class="stat-box">
+      <p class="stat-label">Total</p>
+      <p class="stat-value text-accent-500"><%= official.grand.total %></p>
     </div>
   </div>
 
-  <% if (!summary.rows.length) { %>
-    <div class="rounded-2xl border border-brand-100 bg-white/90 p-4 shadow-sm screen-only">
+  <% if (!official.rows.length) { %>
+    <div class="rounded-2xl border border-brand-100 bg-white/90 p-4 shadow-sm">
       <p class="text-sm text-slate-500">Todavía no hay reportes.</p>
     </div>
   <% } else { %>
-    <!-- Móvil: tarjetas por persona (pantalla) -->
     <div class="admin-cards space-y-3 screen-only">
-      <% summary.rows.forEach(function (row) { %>
+      <% official.rows.forEach(function (row) { %>
         <article class="reporter-card">
           <h3 class="reporter-card-name"><%= row.reporterName %></h3>
-
-          <div class="reporter-card-block reporter-card-live">
-            <p class="reporter-card-section">En vivo</p>
+          <div class="reporter-card-block">
             <div class="reporter-card-grid">
               <div>
                 <span class="reporter-card-label">Mujeres</span>
-                <strong><%= row.realtimeFemale %></strong>
+                <strong><%= row.women %></strong>
               </div>
               <div>
                 <span class="reporter-card-label">Hombres</span>
-                <strong><%= row.realtimeMale %></strong>
+                <strong><%= row.men %></strong>
               </div>
               <div>
                 <span class="reporter-card-label">Total</span>
-                <strong class="text-accent-500"><%= row.realtimeTotal %></strong>
+                <strong class="text-accent-500"><%= row.total %></strong>
               </div>
             </div>
-            <% if (row.lastRealtimeAt) { %>
-              <p class="mt-2 text-center text-xs text-slate-500">Último: <%= formatDateTime(row.lastRealtimeAt) %></p>
-            <% } %>
-          </div>
-
-          <div class="reporter-card-divider" aria-hidden="true"></div>
-
-          <div class="reporter-card-block reporter-card-final">
-            <p class="reporter-card-section">Último final<% if (row.totalReports) { %> · <%= row.totalReports %> envío(s)<% } %></p>
-            <div class="reporter-card-grid">
-              <div>
-                <span class="reporter-card-label">Mujeres</span>
-                <strong><%= row.totalWomen %></strong>
-              </div>
-              <div>
-                <span class="reporter-card-label">Hombres</span>
-                <strong><%= row.totalMen %></strong>
-              </div>
-              <div>
-                <span class="reporter-card-label">Total</span>
-                <strong class="text-accent-500"><%= row.totalVotes %></strong>
-              </div>
-            </div>
-            <% if (row.lastTotalAt) { %>
-              <p class="mt-2 text-center text-xs text-slate-500">Último: <%= formatDateTime(row.lastTotalAt) %></p>
+            <% if (row.reportedAt) { %>
+              <p class="mt-2 text-center text-xs text-slate-500">Actualizado: <%= formatDateTime(row.reportedAt) %></p>
             <% } %>
           </div>
         </article>
@@ -122,113 +66,60 @@
 
       <article class="reporter-card reporter-card-total">
         <h3 class="reporter-card-name">Total general</h3>
-        <div class="reporter-card-block reporter-card-live">
-          <p class="reporter-card-section">En vivo</p>
+        <div class="reporter-card-block">
           <div class="reporter-card-grid">
             <div>
               <span class="reporter-card-label">Mujeres</span>
-              <strong><%= summary.grand.realtimeFemale %></strong>
+              <strong><%= official.grand.women %></strong>
             </div>
             <div>
               <span class="reporter-card-label">Hombres</span>
-              <strong><%= summary.grand.realtimeMale %></strong>
+              <strong><%= official.grand.men %></strong>
             </div>
             <div>
               <span class="reporter-card-label">Total</span>
-              <strong class="text-accent-500"><%= summary.grand.realtimeTotal %></strong>
-            </div>
-          </div>
-        </div>
-        <div class="reporter-card-divider" aria-hidden="true"></div>
-        <div class="reporter-card-block reporter-card-final">
-          <p class="reporter-card-section">Último final</p>
-          <div class="reporter-card-grid">
-            <div>
-              <span class="reporter-card-label">Mujeres</span>
-              <strong><%= summary.grand.totalWomen %></strong>
-            </div>
-            <div>
-              <span class="reporter-card-label">Hombres</span>
-              <strong><%= summary.grand.totalMen %></strong>
-            </div>
-            <div>
-              <span class="reporter-card-label">Total</span>
-              <strong class="text-accent-500"><%= summary.grand.totalVotes %></strong>
+              <strong class="text-accent-500"><%= official.grand.total %></strong>
             </div>
           </div>
         </div>
       </article>
     </div>
 
-    <!-- Desktop: tabla completa (pantalla) -->
     <div class="admin-table overflow-x-auto rounded-2xl border border-brand-100 bg-white/90 p-4 shadow-sm screen-only">
       <table class="min-w-full text-left text-sm report-table">
         <thead class="border-b border-slate-200 text-slate-500">
           <tr>
             <th class="py-2 pr-3 font-medium sticky left-0 bg-white">Persona</th>
-            <th class="py-2 pr-3 font-medium">RT Mujeres</th>
-            <th class="py-2 pr-3 font-medium">RT Hombres</th>
-            <th class="py-2 pr-3 font-medium">RT Total</th>
-            <th class="py-2 pr-3 font-medium">Último RT</th>
-            <th class="py-2 pr-3 font-medium">Final Mujeres</th>
-            <th class="py-2 pr-3 font-medium">Final Hombres</th>
-            <th class="py-2 pr-3 font-medium">Final Total</th>
-            <th class="py-2 pr-3 font-medium">Último final</th>
-            <th class="py-2 font-medium"># Totales</th>
+            <th class="py-2 pr-3 font-medium">Mujeres</th>
+            <th class="py-2 pr-3 font-medium">Hombres</th>
+            <th class="py-2 pr-3 font-medium">Total</th>
+            <th class="py-2 font-medium">Actualizado</th>
           </tr>
         </thead>
         <tbody>
-          <% summary.rows.forEach(function (row) { %>
+          <% official.rows.forEach(function (row) { %>
             <tr class="border-b border-slate-100">
               <td class="py-2 pr-3 font-medium text-brand-900 sticky left-0 bg-white"><%= row.reporterName %></td>
-              <td class="py-2 pr-3"><%= row.realtimeFemale %></td>
-              <td class="py-2 pr-3"><%= row.realtimeMale %></td>
-              <td class="py-2 pr-3 font-semibold"><%= row.realtimeTotal %></td>
-              <td class="py-2 pr-3 whitespace-nowrap text-xs"><%= formatDateTime(row.lastRealtimeAt) %></td>
-              <td class="py-2 pr-3"><%= row.totalWomen %></td>
-              <td class="py-2 pr-3"><%= row.totalMen %></td>
-              <td class="py-2 pr-3 font-semibold"><%= row.totalVotes %></td>
-              <td class="py-2 pr-3 whitespace-nowrap text-xs"><%= formatDateTime(row.lastTotalAt) %></td>
-              <td class="py-2"><%= row.totalReports %></td>
+              <td class="py-2 pr-3"><%= row.women %></td>
+              <td class="py-2 pr-3"><%= row.men %></td>
+              <td class="py-2 pr-3 font-semibold"><%= row.total %></td>
+              <td class="py-2 whitespace-nowrap text-xs"><%= formatDateTime(row.reportedAt) %></td>
             </tr>
           <% }) %>
         </tbody>
         <tfoot>
           <tr class="font-semibold text-brand-900 border-t border-slate-200">
             <td class="pt-3 pr-3 sticky left-0 bg-white">TOTAL</td>
-            <td class="pt-3 pr-3"><%= summary.grand.realtimeFemale %></td>
-            <td class="pt-3 pr-3"><%= summary.grand.realtimeMale %></td>
-            <td class="pt-3 pr-3"><%= summary.grand.realtimeTotal %></td>
-            <td class="pt-3 pr-3">—</td>
-            <td class="pt-3 pr-3"><%= summary.grand.totalWomen %></td>
-            <td class="pt-3 pr-3"><%= summary.grand.totalMen %></td>
-            <td class="pt-3 pr-3"><%= summary.grand.totalVotes %></td>
-            <td class="pt-3 pr-3">—</td>
-            <td class="pt-3"><%= summary.rows.reduce(function (a, r) { return a + r.totalReports; }, 0) %></td>
+            <td class="pt-3 pr-3"><%= official.grand.women %></td>
+            <td class="pt-3 pr-3"><%= official.grand.men %></td>
+            <td class="pt-3 pr-3"><%= official.grand.total %></td>
+            <td class="pt-3">—</td>
           </tr>
         </tfoot>
       </table>
     </div>
 
-    <!-- Impresión: solo columnas oficiales (final > en vivo) -->
     <div class="print-only official-print">
-      <div class="mb-4 grid grid-cols-3 gap-3">
-        <div class="stat-box">
-          <p class="stat-label">Mujeres</p>
-          <p class="stat-value"><%= official.grand.women %></p>
-        </div>
-        <div class="stat-box">
-          <p class="stat-label">Hombres</p>
-          <p class="stat-value"><%= official.grand.men %></p>
-        </div>
-        <div class="stat-box">
-          <p class="stat-label">Total</p>
-          <p class="stat-value text-accent-500"><%= official.grand.total %></p>
-        </div>
-      </div>
-      <p class="mb-3 text-xs text-slate-500">
-        Con total final: <%= official.grand.fromFinal %> · Solo en vivo: <%= official.grand.fromRealtime %>
-      </p>
       <table class="min-w-full text-left text-sm report-table">
         <thead class="border-b border-slate-200 text-slate-500">
           <tr>
@@ -236,7 +127,6 @@
             <th class="py-2 pr-3 font-medium">Mujeres</th>
             <th class="py-2 pr-3 font-medium">Hombres</th>
             <th class="py-2 pr-3 font-medium">Total</th>
-            <th class="py-2 pr-3 font-medium">Origen</th>
             <th class="py-2 font-medium">Fecha/hora</th>
           </tr>
         </thead>
@@ -247,7 +137,6 @@
               <td class="py-2 pr-3"><%= row.women %></td>
               <td class="py-2 pr-3"><%= row.men %></td>
               <td class="py-2 pr-3 font-semibold"><%= row.total %></td>
-              <td class="py-2 pr-3"><%= row.sourceLabel %></td>
               <td class="py-2"><%= formatDateTime(row.reportedAt) %></td>
             </tr>
           <% }) %>
@@ -258,7 +147,6 @@
             <td class="pt-3 pr-3"><%= official.grand.women %></td>
             <td class="pt-3 pr-3"><%= official.grand.men %></td>
             <td class="pt-3 pr-3"><%= official.grand.total %></td>
-            <td class="pt-3 pr-3"></td>
             <td class="pt-3"></td>
           </tr>
         </tfoot>

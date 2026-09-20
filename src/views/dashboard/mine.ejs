@@ -2,24 +2,20 @@
   <div class="mb-6">
     <%- include('../partials/back-link', { backHref: '/menu', backLabel: 'Volver al menú' }) %>
     <h1 class="mt-1 text-2xl font-semibold text-brand-900">Mi reporte</h1>
-    <p class="mt-1 text-sm text-slate-600">
-      Si hay total final, el conteo voto a voto continúa desde ese total (mismo reporte válido).
-    </p>
+    <p class="mt-1 text-sm text-slate-600">Totales que tienes reportados.</p>
   </div>
 
   <% 
     const currentFemale = summary.latestFinal ? summary.latestFinal.women : summary.realtime.female;
     const currentMale = summary.latestFinal ? summary.latestFinal.men : summary.realtime.male;
     const currentTotal = summary.latestFinal ? summary.latestFinal.total : summary.realtime.total;
+    const updatedAt = summary.latestFinal
+      ? (summary.latestFinal.createdAt || summary.latestFinal.syncedAt)
+      : summary.realtime.lastAt;
   %>
-  <div class="mb-6 rounded-2xl border border-brand-100 bg-white/90 p-5 shadow-sm">
-    <h2 class="text-lg font-semibold text-brand-900">
-      <% if (summary.latestFinal) { %>
-        Conteo actual (sincronizado con el total final)
-      <% } else { %>
-        Conteo voto a voto
-      <% } %>
-    </h2>
+
+  <div class="rounded-2xl border border-brand-100 bg-white/90 p-5 shadow-sm">
+    <h2 class="text-lg font-semibold text-brand-900">Totales reportados</h2>
     <div class="mt-4 grid grid-cols-3 gap-3">
       <div class="stat-box">
         <p class="stat-label">Mujeres</p>
@@ -34,63 +30,14 @@
         <p class="stat-value text-accent-500"><%= currentTotal %></p>
       </div>
     </div>
-    <% if (summary.latestFinal) { %>
-      <p class="mt-3 text-sm text-sky-800">
-        Este es el total final válido. Los votos a voto posteriores ya están incluidos aquí.
-      </p>
-    <% } else if (summary.realtime.total > 0) { %>
-      <div class="mt-4 space-y-1 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
-        <p>Primer voto: <strong class="text-brand-900"><%= formatDateTime(summary.realtime.firstAt) %></strong></p>
-        <p>Último voto: <strong class="text-brand-900"><%= formatDateTime(summary.realtime.lastAt) %></strong></p>
-      </div>
+    <% if (currentTotal > 0) { %>
+      <% if (updatedAt) { %>
+        <p class="mt-3 text-sm text-slate-600">
+          Actualizado: <strong class="text-brand-900"><%= formatDateTime(updatedAt) %></strong>
+        </p>
+      <% } %>
     <% } else { %>
       <p class="mt-3 text-sm text-slate-500">Aún no hay votos registrados.</p>
-    <% } %>
-  </div>
-
-  <div class="rounded-2xl border border-brand-100 bg-white/90 p-5 shadow-sm">
-    <h2 class="text-lg font-semibold text-brand-900">Totales finales</h2>
-    <% if (!summary.totals.length) { %>
-      <p class="mt-3 text-sm text-slate-500">Aún no has enviado un total final.</p>
-    <% } else { %>
-      <div class="mt-4 overflow-x-auto">
-        <table class="min-w-full text-left text-sm">
-          <thead class="border-b border-slate-200 text-slate-500">
-            <tr>
-              <th class="py-2 pr-3 font-medium">Fecha y hora</th>
-              <th class="py-2 pr-3 font-medium">Mujeres</th>
-              <th class="py-2 pr-3 font-medium">Hombres</th>
-              <th class="py-2 font-medium">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% summary.totals.forEach(function (row, idx) { %>
-              <tr class="border-b border-slate-100 <%= idx === summary.totals.length - 1 ? 'bg-emerald-50/80' : '' %>">
-                <td class="py-2 pr-3">
-                  <%= formatDateTime(row.createdAt || row.syncedAt) %>
-                  <% if (idx === summary.totals.length - 1) { %>
-                    <span class="ml-1 text-xs font-bold text-emerald-700">(válido)</span>
-                  <% } %>
-                </td>
-                <td class="py-2 pr-3"><%= row.women %></td>
-                <td class="py-2 pr-3"><%= row.men %></td>
-                <td class="py-2 font-semibold"><%= row.total %></td>
-              </tr>
-            <% }) %>
-          </tbody>
-          <tfoot>
-            <tr class="font-semibold text-brand-900">
-              <td class="pt-3 pr-3">Último final (válido)</td>
-              <td class="pt-3 pr-3"><%= summary.totalsAgg.women %></td>
-              <td class="pt-3 pr-3"><%= summary.totalsAgg.men %></td>
-              <td class="pt-3"><%= summary.totalsAgg.total %></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-      <p class="mt-3 text-xs text-slate-500">
-        El último total es el válido. Contar voto a voto continúa desde ese mismo total.
-      </p>
     <% } %>
   </div>
 </section>
