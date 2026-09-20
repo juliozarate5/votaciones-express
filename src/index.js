@@ -75,6 +75,7 @@ app.get('/health', async (req, res) => {
 
 app.use(authRoutes);
 app.get('/menu', requireLogin, menuController.showMenu);
+// Reset admin necesita DB; va por dashboard routes con requireDatabase
 app.use(requireDatabase, reportRoutes);
 app.use(requireDatabase, dashboardRoutes);
 

@@ -1,0 +1,104 @@
+<section class="mx-auto max-w-lg">
+  <%- include('../partials/back-link', { backHref: '/dashboard/admin', backLabel: 'Volver al reporte' }) %>
+
+  <div class="rounded-2xl border-2 border-rose-300 bg-rose-50 p-5 shadow-sm">
+    <h1 class="text-2xl font-bold text-rose-900">Resetear base de datos</h1>
+    <p class="mt-3 text-sm leading-relaxed text-rose-900">
+      <strong>Advertencia:</strong> esta acción eliminará
+      <strong>todos los votos</strong> (tiempo real y totales finales) de
+      <strong>todas las personas</strong>. No se puede deshacer.
+    </p>
+    <p class="mt-2 text-sm text-rose-800">
+      Registros actuales en la base:
+      <strong><%= totalDocs %></strong>
+    </p>
+  </div>
+
+  <form
+    id="reset-form"
+    action="/dashboard/admin/reset"
+    method="POST"
+    class="mt-5 space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+  >
+    <label class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-3 text-sm text-rose-900">
+      <input
+        id="confirmDelete"
+        name="confirmDelete"
+        type="checkbox"
+        value="yes"
+        required
+        class="mt-1 h-4 w-4"
+      />
+      <span>
+        Confirmo que entiendo que se borrarán <strong>todos los votos</strong> y deseo continuar.
+      </span>
+    </label>
+
+    <div>
+      <label for="securityCode" class="mb-1.5 block text-sm font-medium text-slate-700">
+        Código de seguridad
+      </label>
+      <input
+        id="securityCode"
+        name="securityCode"
+        type="password"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        maxlength="12"
+        required
+        autocomplete="off"
+        placeholder="Introduce el código"
+        class="field-input"
+      />
+      <p class="mt-1.5 text-xs text-slate-500">Debe coincidir con la contraseña de administrador.</p>
+    </div>
+
+    <div class="flex flex-col gap-2 sm:flex-row">
+      <a href="/dashboard/admin" class="action-btn action-btn-secondary w-full sm:w-auto text-center">
+        Cancelar
+      </a>
+      <button
+        id="btn-reset"
+        type="submit"
+        class="w-full rounded-xl bg-rose-700 px-4 py-3 text-base font-bold text-white hover:bg-rose-800 sm:w-auto"
+        disabled
+      >
+        Confirmar borrado
+      </button>
+    </div>
+  </form>
+</section>
+
+<script>
+  (() => {
+    const form = document.getElementById('reset-form');
+    const checkbox = document.getElementById('confirmDelete');
+    const codeInput = document.getElementById('securityCode');
+    const btn = document.getElementById('btn-reset');
+
+    function refresh() {
+      const ok = checkbox.checked && /^\d+$/.test(codeInput.value.trim());
+      btn.disabled = !ok;
+      btn.style.opacity = ok ? '1' : '0.5';
+    }
+
+    checkbox.addEventListener('change', refresh);
+    codeInput.addEventListener('input', () => {
+      codeInput.value = codeInput.value.replace(/\D/g, '');
+      refresh();
+    });
+
+    form.addEventListener('submit', (event) => {
+      if (!checkbox.checked) {
+        event.preventDefault();
+        return;
+      }
+      const sure = window.confirm(
+        'ÚLTIMA CONFIRMACIÓN\n\nSe borrarán TODOS los votos de la base de datos.\n¿Deseas continuar?'
+      );
+      if (!sure) event.preventDefault();
+    });
+
+    refresh();
+  })();
+</script>

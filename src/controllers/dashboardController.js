@@ -64,10 +64,50 @@ async function exportPdf(req, res) {
   }
 }
 
+async function showReset(req, res) {
+  const totalDocs = await require('../models/VoteReport').countDocuments();
+  res.render('dashboard/reset', {
+    title: 'Resetear base de datos',
+    totalDocs,
+    wide: true,
+  });
+}
+
+async function resetDatabase(req, res) {
+  try {
+    const code = String(req.body.securityCode || '').trim();
+    const confirmed = req.body.confirmDelete === 'yes';
+    const expected = String(process.env.ADMIN_PASSWORD || '').trim();
+
+    if (!confirmed) {
+      req.flash('error', 'Debes marcar la casilla de confirmación');
+      return res.redirect('/dashboard/admin/reset');
+    }
+
+    if (!/^\d+$/.test(code) || code !== expected) {
+      req.flash('error', 'Código de seguridad incorrecto');
+      return res.redirect('/dashboard/admin/reset');
+    }
+
+    const result = await voteService.resetAllVotes();
+    req.flash(
+      'success',
+      `Base de reportes reiniciada. Se eliminaron ${result.deleted} registro(s).`
+    );
+    return res.redirect('/dashboard/admin');
+  } catch (err) {
+    console.error(err);
+    req.flash('error', 'No se pudo resetear la base de datos');
+    return res.redirect('/dashboard/admin/reset');
+  }
+}
+
 module.exports = {
   showMine,
   showAdmin,
   showStats,
   exportExcel,
   exportPdf,
+  showReset,
+  resetDatabase,
 };

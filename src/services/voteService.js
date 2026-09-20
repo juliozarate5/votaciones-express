@@ -213,6 +213,12 @@ async function getRealtimeCounts(reporterName) {
   return { female, male, total: female + male };
 }
 
+async function resetAllVotes() {
+  const before = await VoteReport.countDocuments();
+  const result = await VoteReport.deleteMany({});
+  return { before, deleted: result.deletedCount || 0 };
+}
+
 module.exports = {
   saveRealtimeVote,
   saveTotalReport,
@@ -220,4 +226,5 @@ module.exports = {
   getReporterSummary,
   getAdminSummary,
   getRealtimeCounts,
+  resetAllVotes,
 };
