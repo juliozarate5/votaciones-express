@@ -1,4 +1,4 @@
-const CACHE_NAME = 'votaciones-shell-v8';
+const CACHE_NAME = 'votaciones-shell-v9';
 const SHELL = [
   '/css/app.css',
   '/js/app.js',
@@ -11,28 +11,63 @@ const SHELL = [
   '/icons/icon-512.png',
 ];
 
+function isCacheableRequest(request) {
+  try {
+    const url = new URL(request.url);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+    if (url.origin !== self.location.origin) return false;
+    if (request.method !== 'GET') return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function putInCache(request, response) {
+  if (!isCacheableRequest(request) || !response || !response.ok) return;
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(request, response.clone());
+  } catch (err) {
+    // Ignorar esquemas no soportados (chrome-extension, etc.)
+    console.warn('Cache put omitido:', err.message);
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting())
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(SHELL))
+      .then(() => self.skipWaiting())
+      .catch((err) => console.warn('SW install cache:', err))
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  if (request.method !== 'GET') return;
+
+  // No interceptar extensiones del navegador ni otros esquemas
+  if (!isCacheableRequest(request)) return;
 
   const url = new URL(request.url);
   if (url.pathname.startsWith('/api/')) return;
 
-  // Nunca cachear HTML/páginas: siempre red (evita tablas/vistas viejas)
   const isDocument =
     request.mode === 'navigate' ||
     (request.headers.get('accept') || '').includes('text/html');
@@ -47,13 +82,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // CSS/JS: prefer network
   if (url.pathname.startsWith('/css/') || url.pathname.startsWith('/js/')) {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        .then(async (response) => {
+          await putInCache(request, response);
           return response;
         })
         .catch(() => caches.match(request))
@@ -61,16 +94,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        return response;
-      })
-      .catch(async () => {
-        const cached = await caches.match(request);
-        return cached || Response.error();
-      })
-  );
+  // Solo iconos/manifest del mismo origen; no cachear CDN externos
+  if (
+    url.pathname.startsWith('/icons/') ||
+    url.pathname === '/manifest.json'
+  ) {
+    event.respondWith(
+      fetch(request)
+        .then(async (response) => {
+          await putInCache(request, response);
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+  }
 });
