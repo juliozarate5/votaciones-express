@@ -1,0 +1,24 @@
+{
+  "name": "Reporte de Votaciones",
+  "short_name": "Votaciones",
+  "description": "Reporte de votos en tiempo real o total final, con soporte offline",
+  "start_url": "/menu",
+  "display": "standalone",
+  "background_color": "#eef8f7",
+  "theme_color": "#0f4c5c",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

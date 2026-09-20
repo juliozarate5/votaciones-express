@@ -1,0 +1,50 @@
+<section class="mx-auto max-w-md">
+  <div class="mb-8 text-center">
+    <h1 class="text-3xl font-semibold tracking-tight text-brand-900">Ingreso</h1>
+    <p class="mt-2 text-sm text-slate-600">Escribe tu nombre y el código secreto para reportar votos.</p>
+  </div>
+
+  <form action="/login" method="POST" class="space-y-4 rounded-2xl border border-brand-100 bg-white/90 p-6 shadow-sm">
+    <div>
+      <label for="name" class="mb-1.5 block text-sm font-medium text-slate-700">Nombre</label>
+      <input
+        id="name"
+        name="name"
+        type="text"
+        required
+        autocomplete="username"
+        placeholder="Tu nombre o mesa"
+        class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base outline-none ring-brand-500 focus:ring-2"
+      />
+    </div>
+    <div>
+      <label for="code" class="mb-1.5 block text-sm font-medium text-slate-700">Código secreto</label>
+      <input
+        id="code"
+        name="code"
+        type="password"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        maxlength="12"
+        required
+        autocomplete="current-password"
+        placeholder="Solo números"
+        class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base outline-none ring-brand-500 focus:ring-2"
+      />
+    </div>
+    <button type="submit" class="w-full rounded-xl bg-brand-700 px-4 py-3 text-base font-semibold text-white shadow-sm hover:bg-brand-900 transition">
+      Entrar
+    </button>
+  </form>
+
+  <script>
+    document.getElementById('code')?.addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/\D/g, '');
+    });
+  </script>
+
+    <p class="mt-4 text-center text-xs text-slate-500">
+      El nombre no distingue mayúsculas: <strong>Ana</strong> y <strong>ana</strong> son la misma persona.
+      Admin: nombre <strong>admin</strong> + código de administrador.
+    </p>
+</section>

@@ -1,0 +1,23 @@
+<header class="border-b border-brand-100/80 bg-white/80 backdrop-blur sticky top-0 z-20 no-print">
+  <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+    <a href="<%= user ? '/menu' : '/login' %>" class="group flex items-center gap-2">
+      <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-brand-700 text-sm font-bold text-white shadow-sm">V</span>
+      <div>
+        <p class="text-sm font-semibold text-brand-900 leading-tight">Reporte de Votaciones</p>
+        <% if (user) { %>
+          <p class="text-xs text-slate-500"><%= user.name %><% if (user.role === 'admin') { %> · admin<% } %></p>
+        <% } %>
+      </div>
+    </a>
+    <div class="flex items-center gap-2">
+      <% if (user) { %>
+        <a href="/menu" class="header-menu-btn">Menú</a>
+        <form action="/logout" method="POST" class="inline">
+          <button type="submit" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+            Salir
+          </button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+</header>

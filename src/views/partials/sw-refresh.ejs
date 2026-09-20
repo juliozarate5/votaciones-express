@@ -1,0 +1,8 @@
+<script>
+  // Fuerza actualización del service worker para no ver HTML viejo cacheado
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((reg) => reg.update());
+    });
+  }
+</script>

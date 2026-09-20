@@ -1,0 +1,32 @@
+<section class="mx-auto max-w-md">
+  <div class="mb-6">
+    <%- include('../partials/back-link', { backHref: '/menu', backLabel: 'Volver al menú' }) %>
+    <h1 class="mt-1 text-2xl font-semibold text-brand-900">Total final</h1>
+    <p class="mt-1 text-sm text-slate-600">Registra el cierre. No reemplaza los votos en tiempo real.</p>
+  </div>
+
+  <form id="total-form" action="/report/total" method="POST" class="space-y-4 rounded-2xl border border-brand-100 bg-white/90 p-6 shadow-sm">
+    <div>
+      <label for="total" class="mb-1.5 block text-sm font-medium text-slate-700">Cantidad total de votos</label>
+      <input id="total" name="total" type="number" min="0" step="1" required class="field-input" />
+    </div>
+    <div>
+      <label for="women" class="mb-1.5 block text-sm font-medium text-slate-700">Cantidad de mujeres</label>
+      <input id="women" name="women" type="number" min="0" step="1" required class="field-input" />
+    </div>
+    <div>
+      <label for="men" class="mb-1.5 block text-sm font-medium text-slate-700">Cantidad de hombres</label>
+      <input id="men" name="men" type="number" min="0" step="1" required class="field-input" />
+    </div>
+    <p id="total-hint" class="rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-700">
+      Tip: escribe el total y un género; el otro se completa solo.
+    </p>
+    <p id="total-error" class="hidden text-sm text-rose-600">Mujeres + hombres debe ser igual al total.</p>
+    <p id="total-feedback" class="min-h-[1.25rem] text-sm text-slate-600" aria-live="polite"></p>
+    <button type="submit" class="w-full rounded-xl bg-brand-700 px-4 py-3 text-base font-semibold text-white hover:bg-brand-900 transition">
+      Guardar total final
+    </button>
+  </form>
+</section>
+
+<script src="/js/total-form.js" defer></script>

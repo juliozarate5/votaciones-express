@@ -1,0 +1,45 @@
+<section>
+  <div class="mb-6 flex items-start justify-between gap-3">
+    <div>
+      <%- include('../partials/back-link', { backHref: '/menu', backLabel: 'Volver al menú' }) %>
+      <h1 class="mt-1 text-2xl font-semibold text-brand-900">Tiempo real</h1>
+      <p class="mt-1 text-sm text-slate-600">Toca un botón por cada voto. Funciona sin internet.</p>
+    </div>
+    <div id="sync-status" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">En línea</div>
+  </div>
+
+  <div class="mb-6 grid grid-cols-3 gap-3">
+    <div class="stat-box">
+      <p class="stat-label">Mujeres</p>
+      <p id="count-female" class="stat-value text-brand-700"><%= counts.female %></p>
+    </div>
+    <div class="stat-box">
+      <p class="stat-label">Hombres</p>
+      <p id="count-male" class="stat-value text-brand-700"><%= counts.male %></p>
+    </div>
+    <div class="stat-box">
+      <p class="stat-label">Total</p>
+      <p id="count-total" class="stat-value text-accent-500"><%= counts.total %></p>
+    </div>
+  </div>
+
+  <div class="grid gap-3 sm:grid-cols-2">
+    <button type="button" id="btn-female" class="vote-btn bg-rose-600 hover:bg-rose-700" data-gender="female">
+      Mujer
+    </button>
+    <button type="button" id="btn-male" class="vote-btn bg-sky-700 hover:bg-sky-800" data-gender="male">
+      Hombre
+    </button>
+  </div>
+
+  <p id="vote-feedback" class="mt-4 min-h-[1.25rem] text-center text-sm text-slate-600" aria-live="polite"></p>
+
+  <div class="mt-8 flex justify-center">
+    <a href="/dashboard/mine" class="back-link" style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.85rem 1.15rem;border:2px solid #0f4c5c;border-radius:0.9rem;background:#d5efec;color:#0a2f38;font-size:1.125rem;font-weight:700;text-decoration:none;">
+      <span class="back-link-icon" aria-hidden="true" style="font-size:1.35rem;">→</span>
+      <span>Ver mi reporte</span>
+    </a>
+  </div>
+</section>
+
+<script src="/js/realtime.js" defer></script>

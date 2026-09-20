@@ -1,0 +1,34 @@
+{
+  "name": "votaciones",
+  "version": "1.0.0",
+  "description": "Reporte de votaciones con Node, EJS, MongoDB y PWA",
+  "main": "server.js",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/public/css/input.css -o ./src/public/css/app.css --minify",
+    "prestart": "npm run build:css",
+    "start": "node server.js",
+    "dev": "npm run build:css && node --watch server.js",
+    "dev:css": "tailwindcss -i ./src/public/css/input.css -o ./src/public/css/app.css --watch"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "connect-flash": "^0.1.1",
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.2",
+    "express-ejs-layouts": "^2.5.1",
+    "express-session": "^1.18.1",
+    "method-override": "^3.0.0",
+    "mongoose": "^8.9.5",
+    "pdfkit": "^0.20.2",
+    "uuid": "^11.0.5"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.6.1",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^3.4.17"
+  }
+}

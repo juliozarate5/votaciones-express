@@ -1,0 +1,18 @@
+<% if (typeof success !== 'undefined' && success && success.length) { %>
+  <% success.forEach(function (msg) { %>
+    <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"><%= msg %></div>
+  <% }) %>
+<% } %>
+<% if (typeof error !== 'undefined' && error && error.length) { %>
+  <% error.forEach(function (msg) { %>
+    <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"><%= msg %></div>
+  <% }) %>
+<% } %>
+<% if (typeof info !== 'undefined' && info && info.length) { %>
+  <% info.forEach(function (msg) { %>
+    <div class="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800"><%= msg %></div>
+  <% }) %>
+<% } %>
+<% if (typeof errorExtra !== 'undefined' && errorExtra) { %>
+  <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"><%= errorExtra %></div>
+<% } %>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f4c5c" />
+  <meta name="description" content="Reporte de votaciones offline-first" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/icons/icon-192.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <title><%= typeof title !== 'undefined' ? title + ' · ' : '' %>Votaciones</title>
+  <link rel="stylesheet" href="/css/app.css?v=9" />
+</head>
+<body class="min-h-screen bg-gradient-to-br from-brand-50 via-white to-teal-50 text-slate-800 font-body antialiased">
+  <%- include('../partials/header') %>
+  <main class="mx-auto px-4 py-6 sm:px-6 <%= typeof wide !== 'undefined' && wide ? 'max-w-6xl' : 'max-w-3xl' %>">
+    <%- include('../partials/flash') %>
+    <%- body %>
+  </main>
+  <div id="offline-banner" class="offline-banner hidden" role="status">
+    Sin conexión — los votos se guardarán y sincronizarán luego
+  </div>
+  <script src="/js/offline-queue.js" defer></script>
+  <script src="/js/app.js" defer></script>
+  <%- include('../partials/sw-refresh') %>
+</body>
+</html>

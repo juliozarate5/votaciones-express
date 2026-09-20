@@ -1,0 +1,71 @@
+<section>
+  <div class="mb-6">
+    <%- include('../partials/back-link', { backHref: '/menu', backLabel: 'Volver al menú' }) %>
+    <h1 class="mt-1 text-2xl font-semibold text-brand-900">Mi reporte</h1>
+    <p class="mt-1 text-sm text-slate-600">Tiempo real y totales finales se muestran por separado, con fecha y hora.</p>
+  </div>
+
+  <div class="mb-6 rounded-2xl border border-brand-100 bg-white/90 p-5 shadow-sm">
+    <h2 class="text-lg font-semibold text-brand-900">Reportado en tiempo real</h2>
+    <div class="mt-4 grid grid-cols-3 gap-3">
+      <div class="stat-box">
+        <p class="stat-label">Mujeres</p>
+        <p class="stat-value"><%= summary.realtime.female %></p>
+      </div>
+      <div class="stat-box">
+        <p class="stat-label">Hombres</p>
+        <p class="stat-value"><%= summary.realtime.male %></p>
+      </div>
+      <div class="stat-box">
+        <p class="stat-label">Total</p>
+        <p class="stat-value text-accent-500"><%= summary.realtime.total %></p>
+      </div>
+    </div>
+    <% if (summary.realtime.total > 0) { %>
+      <div class="mt-4 space-y-1 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
+        <p>Primer voto: <strong class="text-brand-900"><%= formatDateTime(summary.realtime.firstAt) %></strong></p>
+        <p>Último voto: <strong class="text-brand-900"><%= formatDateTime(summary.realtime.lastAt) %></strong></p>
+      </div>
+    <% } else { %>
+      <p class="mt-3 text-sm text-slate-500">Aún no hay votos en tiempo real.</p>
+    <% } %>
+  </div>
+
+  <div class="rounded-2xl border border-brand-100 bg-white/90 p-5 shadow-sm">
+    <h2 class="text-lg font-semibold text-brand-900">Reportes de total final</h2>
+    <% if (!summary.totals.length) { %>
+      <p class="mt-3 text-sm text-slate-500">Aún no has enviado un total final.</p>
+    <% } else { %>
+      <div class="mt-4 overflow-x-auto">
+        <table class="min-w-full text-left text-sm">
+          <thead class="border-b border-slate-200 text-slate-500">
+            <tr>
+              <th class="py-2 pr-3 font-medium">Fecha y hora</th>
+              <th class="py-2 pr-3 font-medium">Mujeres</th>
+              <th class="py-2 pr-3 font-medium">Hombres</th>
+              <th class="py-2 font-medium">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% summary.totals.forEach(function (row) { %>
+              <tr class="border-b border-slate-100">
+                <td class="py-2 pr-3"><%= formatDateTime(row.createdAt || row.syncedAt) %></td>
+                <td class="py-2 pr-3"><%= row.women %></td>
+                <td class="py-2 pr-3"><%= row.men %></td>
+                <td class="py-2 font-semibold"><%= row.total %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+          <tfoot>
+            <tr class="font-semibold text-brand-900">
+              <td class="pt-3 pr-3">Suma totales</td>
+              <td class="pt-3 pr-3"><%= summary.totalsAgg.women %></td>
+              <td class="pt-3 pr-3"><%= summary.totalsAgg.men %></td>
+              <td class="pt-3"><%= summary.totalsAgg.total %></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</section>
