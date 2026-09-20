@@ -94,7 +94,7 @@ async function resetDatabase(req, res) {
       'success',
       `Base de reportes reiniciada. Se eliminaron ${result.deleted} registro(s).`
     );
-    return res.redirect('/dashboard/admin');
+    return res.redirect('/menu');
   } catch (err) {
     console.error(err);
     req.flash('error', 'No se pudo resetear la base de datos');

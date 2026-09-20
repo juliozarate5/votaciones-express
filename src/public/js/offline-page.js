@@ -8,21 +8,16 @@
   const buttons = document.querySelectorAll('[data-gender]');
   const btnSync = document.getElementById('btn-sync');
 
-  let localFemale = 0;
-  let localMale = 0;
-
-  function render() {
-    countFemale.textContent = String(localFemale);
-    countMale.textContent = String(localMale);
-    countTotal.textContent = String(localFemale + localMale);
+  function render(female, male) {
+    countFemale.textContent = String(female);
+    countMale.textContent = String(male);
+    countTotal.textContent = String(female + male);
   }
 
   async function refreshPending() {
     const pending = await window.OfflineQueue.pendingCount();
     const local = await window.OfflineQueue.getLocalRealtimeTotals();
-    localFemale = local.female;
-    localMale = local.male;
-    render();
+    render(local.female, local.male);
     pendingLabel.textContent = pending
       ? `${pending} voto(s) pendiente(s) de sincronizar`
       : 'No hay pendientes locales';
@@ -36,20 +31,16 @@
   }
 
   async function addVote(gender) {
-    const clientId = window.OfflineQueue.uuid();
-    const createdAt = new Date().toISOString();
-    await window.OfflineQueue.enqueue({
-      type: 'realtime',
-      clientId,
-      payload: { gender },
-      createdAt,
-    });
-    if (gender === 'female') localFemale += 1;
-    else localMale += 1;
-    render();
-    feedback.textContent = `${gender === 'female' ? 'Mujer' : 'Hombre'} guardado localmente · ${new Date(createdAt).toLocaleTimeString('es-CO')}`;
-    feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-amber-700';
+    const result = await window.OfflineQueue.sendOrQueueRealtime({ gender });
     await refreshPending();
+    const label = gender === 'female' ? 'Mujer' : 'Hombre';
+    if (result.queued) {
+      feedback.textContent = `${label} guardado localmente · ${new Date(result.createdAt).toLocaleTimeString('es-CO')}`;
+      feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-amber-700';
+    } else {
+      feedback.textContent = `${label} registrado en servidor`;
+      feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-emerald-700';
+    }
   }
 
   async function syncNow() {
@@ -61,11 +52,6 @@
         : 'Nada pendiente o el servidor aún no responde.';
       feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-emerald-700';
       await refreshPending();
-      if (result.synced > 0 && navigator.onLine) {
-        setTimeout(() => {
-          window.location.href = '/report/realtime';
-        }, 800);
-      }
     } catch (err) {
       feedback.textContent = 'No se pudo sincronizar. Sigue reportando offline.';
       feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-rose-700';
@@ -92,4 +78,5 @@
 
   setOnlineUi(navigator.onLine);
   refreshPending();
+  if (navigator.onLine) syncNow();
 })();

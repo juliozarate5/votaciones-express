@@ -1,5 +1,5 @@
 <section class="mx-auto max-w-lg">
-  <%- include('../partials/back-link', { backHref: '/dashboard/admin', backLabel: 'Volver al reporte' }) %>
+  <%- include('../partials/back-link', { backHref: '/menu', backLabel: 'Volver al menú' }) %>
 
   <div class="rounded-2xl border-2 border-rose-300 bg-rose-50 p-5 shadow-sm">
     <h1 class="text-2xl font-bold text-rose-900">Resetear base de datos</h1>
@@ -14,25 +14,37 @@
     </p>
   </div>
 
+  <!-- Paso 1: confirmación explícita -->
+  <div id="reset-step-1" class="mt-5 space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <p class="text-sm text-slate-700">
+      Para continuar debes confirmar que quieres borrar toda la información de votación.
+    </p>
+    <div class="flex flex-col gap-2 sm:flex-row">
+      <a href="/menu" class="action-btn action-btn-secondary w-full sm:w-auto text-center">
+        Cancelar
+      </a>
+      <button
+        type="button"
+        id="btn-confirm-step"
+        class="w-full rounded-xl bg-rose-700 px-4 py-3 text-base font-bold text-white hover:bg-rose-800 sm:w-auto"
+      >
+        Sí, quiero continuar
+      </button>
+    </div>
+  </div>
+
+  <!-- Paso 2: código + envío -->
   <form
     id="reset-form"
     action="/dashboard/admin/reset"
     method="POST"
-    class="mt-5 space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+    class="mt-5 hidden space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
   >
-    <label class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-3 text-sm text-rose-900">
-      <input
-        id="confirmDelete"
-        name="confirmDelete"
-        type="checkbox"
-        value="yes"
-        required
-        class="mt-1 h-4 w-4"
-      />
-      <span>
-        Confirmo que entiendo que se borrarán <strong>todos los votos</strong> y deseo continuar.
-      </span>
-    </label>
+    <input type="hidden" name="confirmDelete" value="yes" />
+
+    <p class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+      Confirmaste el borrado. Introduce el código de administrador para ejecutar la acción.
+    </p>
 
     <div>
       <label for="securityCode" class="mb-1.5 block text-sm font-medium text-slate-700">
@@ -54,16 +66,20 @@
     </div>
 
     <div class="flex flex-col gap-2 sm:flex-row">
-      <a href="/dashboard/admin" class="action-btn action-btn-secondary w-full sm:w-auto text-center">
-        Cancelar
-      </a>
+      <button
+        type="button"
+        id="btn-back-step"
+        class="action-btn action-btn-secondary w-full sm:w-auto text-center"
+      >
+        Volver
+      </button>
       <button
         id="btn-reset"
         type="submit"
         class="w-full rounded-xl bg-rose-700 px-4 py-3 text-base font-bold text-white hover:bg-rose-800 sm:w-auto"
         disabled
       >
-        Confirmar borrado
+        Confirmar borrado definitivo
       </button>
     </div>
   </form>
@@ -71,30 +87,48 @@
 
 <script>
   (() => {
+    const step1 = document.getElementById('reset-step-1');
     const form = document.getElementById('reset-form');
-    const checkbox = document.getElementById('confirmDelete');
     const codeInput = document.getElementById('securityCode');
+    const btnStep = document.getElementById('btn-confirm-step');
+    const btnBack = document.getElementById('btn-back-step');
     const btn = document.getElementById('btn-reset');
 
     function refresh() {
-      const ok = checkbox.checked && /^\d+$/.test(codeInput.value.trim());
+      const ok = /^\d+$/.test(codeInput.value.trim());
       btn.disabled = !ok;
       btn.style.opacity = ok ? '1' : '0.5';
     }
 
-    checkbox.addEventListener('change', refresh);
+    btnStep.addEventListener('click', () => {
+      const sure = window.confirm(
+        'ÚLTIMA CONFIRMACIÓN\n\nSe borrarán TODOS los votos de la base de datos.\n¿Deseas continuar?'
+      );
+      if (!sure) return;
+      step1.classList.add('hidden');
+      form.classList.remove('hidden');
+      codeInput.focus();
+    });
+
+    btnBack.addEventListener('click', () => {
+      form.classList.add('hidden');
+      step1.classList.remove('hidden');
+      codeInput.value = '';
+      refresh();
+    });
+
     codeInput.addEventListener('input', () => {
       codeInput.value = codeInput.value.replace(/\D/g, '');
       refresh();
     });
 
     form.addEventListener('submit', (event) => {
-      if (!checkbox.checked) {
+      if (!/^\d+$/.test(codeInput.value.trim())) {
         event.preventDefault();
         return;
       }
       const sure = window.confirm(
-        'ÚLTIMA CONFIRMACIÓN\n\nSe borrarán TODOS los votos de la base de datos.\n¿Deseas continuar?'
+        'Se eliminarán todos los registros ahora.\n¿Confirmas el borrado definitivo?'
       );
       if (!sure) event.preventDefault();
     });
