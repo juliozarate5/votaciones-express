@@ -8,6 +8,8 @@ router.get('/report/realtime', requireLogin, reportController.showRealtime);
 router.get('/report/total', requireLogin, reportController.showTotal);
 
 router.post('/api/votes/realtime', requireApiLogin, reportController.createRealtime);
+router.get('/api/votes/realtime/last', requireApiLogin, reportController.getLastRealtime);
+router.post('/api/votes/realtime/correct', requireApiLogin, reportController.correctRealtime);
 router.post('/api/votes/total', requireApiLogin, reportController.createTotal);
 router.post('/api/votes/sync', requireApiLogin, reportController.syncVotes);
 router.get('/api/votes/counts', requireApiLogin, reportController.getMyCounts);

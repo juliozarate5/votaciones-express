@@ -7,16 +7,27 @@ function reporterKey(req) {
 }
 
 async function showRealtime(req, res) {
-  const counts = await voteService.getRealtimeCounts(reporterKey(req));
+  const key = reporterKey(req);
+  const [counts, lastVote] = await Promise.all([
+    voteService.getRealtimeCounts(key),
+    voteService.getLastRealtimeVote(key),
+  ]);
   res.render('reports/realtime', {
-    title: 'Reporte en tiempo real',
+    title: 'Contar voto a voto',
     counts,
+    lastVote: lastVote
+      ? {
+          clientId: lastVote.clientId,
+          gender: lastVote.gender,
+          createdAt: lastVote.createdAt,
+        }
+      : null,
   });
 }
 
 async function showTotal(req, res) {
   res.render('reports/total', {
-    title: 'Reporte total final',
+    title: 'Reportar solo totales',
   });
 }
 
@@ -128,6 +139,77 @@ async function getMyCounts(req, res) {
   }
 }
 
+async function getLastRealtime(req, res) {
+  try {
+    const key = reporterKey(req);
+    const [counts, lastVote] = await Promise.all([
+      voteService.getRealtimeCounts(key),
+      voteService.getLastRealtimeVote(key),
+    ]);
+    return res.json({
+      ok: true,
+      counts,
+      lastVote: lastVote
+        ? {
+            clientId: lastVote.clientId,
+            gender: lastVote.gender,
+            createdAt: lastVote.createdAt,
+          }
+        : null,
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: 'No se pudo obtener el último voto' });
+  }
+}
+
+async function correctRealtime(req, res) {
+  try {
+    const action = String(req.body.action || '').trim();
+    const clientId = req.body.clientId ? String(req.body.clientId).trim() : undefined;
+    const key = reporterKey(req);
+
+    if (!['annul', 'switch'].includes(action)) {
+      return res.status(400).json({ ok: false, error: 'Acción inválida' });
+    }
+
+    let detail;
+    if (action === 'annul') {
+      detail = await voteService.annulRealtimeVote({ reporterName: key, clientId });
+    } else {
+      detail = await voteService.switchRealtimeGender({
+        reporterName: key,
+        clientId,
+        gender: req.body.gender,
+      });
+    }
+
+    const [counts, lastVote] = await Promise.all([
+      voteService.getRealtimeCounts(key),
+      voteService.getLastRealtimeVote(key),
+    ]);
+
+    return res.json({
+      ok: true,
+      action,
+      detail,
+      counts,
+      lastVote: lastVote
+        ? {
+            clientId: lastVote.clientId,
+            gender: lastVote.gender,
+            createdAt: lastVote.createdAt,
+          }
+        : null,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(err.status || 500).json({
+      ok: false,
+      error: err.message || 'No se pudo corregir el voto',
+    });
+  }
+}
+
 module.exports = {
   showRealtime,
   showTotal,
@@ -135,4 +217,6 @@ module.exports = {
   createTotal,
   syncVotes,
   getMyCounts,
+  getLastRealtime,
+  correctRealtime,
 };

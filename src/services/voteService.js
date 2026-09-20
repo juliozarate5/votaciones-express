@@ -213,6 +213,60 @@ async function getRealtimeCounts(reporterName) {
   return { female, male, total: female + male };
 }
 
+async function getLastRealtimeVote(reporterName) {
+  const filter = reporterNameFilter(reporterName);
+  return VoteReport.findOne({ ...filter, type: 'realtime' }).sort({ createdAt: -1 }).lean();
+}
+
+async function annulRealtimeVote({ reporterName, clientId }) {
+  const filter = reporterNameFilter(reporterName);
+  const query = { ...filter, type: 'realtime' };
+  if (clientId) query.clientId = clientId;
+
+  const vote = clientId
+    ? await VoteReport.findOne(query)
+    : await VoteReport.findOne(query).sort({ createdAt: -1 });
+
+  if (!vote) {
+    const err = new Error('No hay voto para anular');
+    err.status = 404;
+    throw err;
+  }
+
+  await VoteReport.deleteOne({ _id: vote._id });
+  return { deleted: true, vote: vote.toObject ? vote.toObject() : vote };
+}
+
+async function switchRealtimeGender({ reporterName, clientId, gender }) {
+  const filter = reporterNameFilter(reporterName);
+  const query = { ...filter, type: 'realtime' };
+  if (clientId) query.clientId = clientId;
+
+  const vote = clientId
+    ? await VoteReport.findOne(query)
+    : await VoteReport.findOne(query).sort({ createdAt: -1 });
+
+  if (!vote) {
+    const err = new Error('No hay voto para corregir');
+    err.status = 404;
+    throw err;
+  }
+
+  let nextGender = gender;
+  if (!['female', 'male'].includes(nextGender)) {
+    nextGender = vote.gender === 'female' ? 'male' : 'female';
+  }
+
+  if (vote.gender === nextGender) {
+    return { changed: false, vote: vote.toObject ? vote.toObject() : vote };
+  }
+
+  vote.gender = nextGender;
+  vote.syncedAt = new Date();
+  await vote.save();
+  return { changed: true, vote: vote.toObject ? vote.toObject() : vote };
+}
+
 async function resetAllVotes() {
   const before = await VoteReport.countDocuments();
   const result = await VoteReport.deleteMany({});
@@ -226,5 +280,8 @@ module.exports = {
   getReporterSummary,
   getAdminSummary,
   getRealtimeCounts,
+  getLastRealtimeVote,
+  annulRealtimeVote,
+  switchRealtimeGender,
   resetAllVotes,
 };

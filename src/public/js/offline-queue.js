@@ -59,6 +59,33 @@
     });
   }
 
+  async function removeByClientId(clientId) {
+    if (!clientId) return false;
+    const before = await getAll();
+    const exists = before.some((item) => item.clientId === clientId);
+    if (!exists) return false;
+    await removeMany([clientId]);
+    return true;
+  }
+
+  async function updateQueuedRealtimeGender(clientId, gender) {
+    if (!clientId || !['female', 'male'].includes(gender)) return null;
+    const items = await getAll();
+    const item = items.find((row) => row.clientId === clientId && row.type === 'realtime');
+    if (!item) return null;
+    item.payload = { ...(item.payload || {}), gender };
+    await enqueue(item);
+    return item;
+  }
+
+  async function getLastQueuedRealtime() {
+    const items = await getAll();
+    const realtime = items.filter((item) => item.type === 'realtime');
+    if (!realtime.length) return null;
+    realtime.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    return realtime[0];
+  }
+
   async function pendingCount() {
     const items = await getAll();
     return items.length;
@@ -160,6 +187,9 @@
     getAll,
     pendingCount,
     getLocalRealtimeTotals,
+    getLastQueuedRealtime,
+    removeByClientId,
+    updateQueuedRealtimeGender,
     sync,
     sendOrQueueRealtime,
     fetchWithTimeout,
