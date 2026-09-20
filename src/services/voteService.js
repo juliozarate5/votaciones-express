@@ -269,23 +269,36 @@ async function getAdminSummary() {
 
 async function getRealtimeCounts(reporterName) {
   const filter = reporterNameFilter(reporterName);
-  const [female, male, latestFinal] = await Promise.all([
+  const latestFinal = await getLatestTotal(reporterName);
+
+  // Si hay total final válido, el conteo voto a voto continúa desde ese total
+  if (latestFinal) {
+    const women = Number(latestFinal.women || 0);
+    const men = Number(latestFinal.men || 0);
+    return {
+      female: women,
+      male: men,
+      total: women + men,
+      source: 'final',
+      latestFinal: {
+        women,
+        men,
+        total: women + men,
+        createdAt: latestFinal.createdAt,
+      },
+    };
+  }
+
+  const [female, male] = await Promise.all([
     VoteReport.countDocuments({ ...filter, type: 'realtime', gender: 'female' }),
     VoteReport.countDocuments({ ...filter, type: 'realtime', gender: 'male' }),
-    getLatestTotal(reporterName),
   ]);
   return {
     female,
     male,
     total: female + male,
-    latestFinal: latestFinal
-      ? {
-          women: latestFinal.women || 0,
-          men: latestFinal.men || 0,
-          total: latestFinal.total || 0,
-          createdAt: latestFinal.createdAt,
-        }
-      : null,
+    source: 'realtime',
+    latestFinal: null,
   };
 }
 

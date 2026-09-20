@@ -9,8 +9,6 @@
   const lastActions = document.getElementById('last-vote-actions');
   const btnSwitch = document.getElementById('btn-switch-last');
   const btnAnnul = document.getElementById('btn-annul-last');
-  const finalBanner = document.getElementById('final-banner');
-  const finalBannerText = document.getElementById('final-banner-text');
 
   const htmlFemale = Number(countFemale?.textContent || 0);
   const htmlMale = Number(countMale?.textContent || 0);
@@ -21,7 +19,6 @@
   let pendingFemale = 0;
   let pendingMale = 0;
   let lastVote = null;
-  let latestFinal = null;
   let busy = false;
   let fetchGen = 0;
 
@@ -29,11 +26,6 @@
     lastVote = JSON.parse(document.getElementById('initial-last-vote')?.textContent || 'null');
   } catch {
     lastVote = null;
-  }
-  try {
-    latestFinal = JSON.parse(document.getElementById('initial-latest-final')?.textContent || 'null');
-  } catch {
-    latestFinal = null;
   }
 
   function whenQueueReady(fn) {
@@ -75,25 +67,7 @@
     serverFemale = counts.female;
     serverMale = counts.male;
     window.OfflineQueue?.writeBaseline?.(counts);
-    if (counts.latestFinal !== undefined) {
-      latestFinal = counts.latestFinal;
-      renderFinalBanner();
-    }
     renderCounts();
-  }
-
-  function renderFinalBanner() {
-    if (!finalBanner || !finalBannerText) return;
-    if (!latestFinal) {
-      finalBanner.classList.add('hidden');
-      return;
-    }
-    finalBanner.classList.remove('hidden');
-    finalBannerText.innerHTML =
-      `Mujeres <strong>${latestFinal.women}</strong> · ` +
-      `Hombres <strong>${latestFinal.men}</strong> · ` +
-      `Total <strong>${latestFinal.total}</strong>. ` +
-      `Los votos que marques aquí se suman a ese total.`;
   }
 
   function renderLastVote() {
@@ -345,7 +319,6 @@
   });
 
   renderCounts();
-  renderFinalBanner();
   renderLastVote();
 
   whenQueueReady(() => {

@@ -28,13 +28,18 @@ async function showRealtime(req, res) {
 
 async function showTotal(req, res) {
   const key = reporterKey(req);
-  const counts = await voteService.getRealtimeCounts(key);
+  const [counts, sessionRealtime] = await Promise.all([
+    voteService.getRealtimeCounts(key),
+    voteService.getReporterSummary(key),
+  ]);
+  // Para el aviso de reinicio: solo votos a voto de sesión, no el total final
+  const sessionVotes = sessionRealtime.realtime || { female: 0, male: 0, total: 0 };
   res.render('reports/total', {
     title: 'Reportar solo totales',
     realtimeCounts: {
-      female: counts.female,
-      male: counts.male,
-      total: counts.total,
+      female: sessionVotes.female,
+      male: sessionVotes.male,
+      total: sessionVotes.total,
     },
     latestFinal: counts.latestFinal || null,
   });
