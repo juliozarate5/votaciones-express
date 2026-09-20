@@ -2,6 +2,7 @@
   const DB_NAME = 'votaciones-offline';
   const STORE = 'queue';
   const DB_VERSION = 1;
+  const FETCH_TIMEOUT_MS = 8000;
 
   function openDb() {
     return new Promise((resolve, reject) => {
@@ -63,30 +64,94 @@
     return items.length;
   }
 
-  async function sync() {
-    if (!navigator.onLine) return { synced: 0, pending: await pendingCount() };
+  async function getLocalRealtimeTotals() {
+    const items = await getAll();
+    let female = 0;
+    let male = 0;
+    items.forEach((item) => {
+      if (item.type !== 'realtime') return;
+      const gender = item.payload?.gender || item.gender;
+      if (gender === 'female') female += 1;
+      if (gender === 'male') male += 1;
+    });
+    return { female, male, total: female + male };
+  }
+
+  function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, {
+      ...options,
+      credentials: 'same-origin',
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timer));
+  }
+
+  async function sync(options = {}) {
+    if (!options.force && !navigator.onLine) {
+      return { synced: 0, pending: await pendingCount() };
+    }
 
     const items = await getAll();
     if (!items.length) return { synced: 0, pending: 0 };
 
-    const res = await fetch('/api/votes/sync', {
+    const res = await fetchWithTimeout('/api/votes/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ items }),
     });
 
     if (!res.ok) {
-      throw new Error('Sync failed');
+      const err = new Error('Sync failed');
+      err.status = res.status;
+      throw err;
     }
 
     const data = await res.json();
-    const okIds = (data.results || [])
-      .filter((r) => r.ok)
-      .map((r) => r.clientId);
-
+    const okIds = (data.results || []).filter((r) => r.ok).map((r) => r.clientId);
     await removeMany(okIds);
     const pending = await pendingCount();
     return { synced: okIds.length, pending, counts: data.counts };
+  }
+
+  /** Intenta enviar un voto; si falla/timeout/503, lo encola. */
+  async function sendOrQueueRealtime({ gender, clientId, createdAt }) {
+    const item = {
+      type: 'realtime',
+      clientId: clientId || uuid(),
+      payload: { gender },
+      createdAt: createdAt || new Date().toISOString(),
+    };
+
+    try {
+      const res = await fetchWithTimeout('/api/votes/realtime', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          gender: item.payload.gender,
+          clientId: item.clientId,
+          createdAt: item.createdAt,
+        }),
+      });
+
+      if (!res.ok) {
+        await enqueue(item);
+        return { queued: true, offline: res.status >= 500, clientId: item.clientId, createdAt: item.createdAt };
+      }
+
+      const data = await res.json();
+      return {
+        queued: false,
+        offline: false,
+        clientId: item.clientId,
+        createdAt: item.createdAt,
+        counts: data.counts,
+        reportedAt: data.reportedAt,
+      };
+    } catch (err) {
+      await enqueue(item);
+      return { queued: true, offline: true, clientId: item.clientId, createdAt: item.createdAt, error: err.message };
+    }
   }
 
   window.OfflineQueue = {
@@ -94,6 +159,9 @@
     enqueue,
     getAll,
     pendingCount,
+    getLocalRealtimeTotals,
     sync,
+    sendOrQueueRealtime,
+    fetchWithTimeout,
   };
 })();

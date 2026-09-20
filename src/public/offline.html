@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f4c5c" />
+  <title>Votación offline · Votaciones</title>
+  <link rel="stylesheet" href="/css/app.css" />
+  <style>
+    .offline-page { max-width: 28rem; margin: 0 auto; padding: 1.25rem; }
+    .offline-badge {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      background: #fff7ed; color: #9a3412; border: 1px solid #fdba74;
+      border-radius: 999px; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 700;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-brand-50 via-white to-teal-50 text-slate-800">
+  <main class="offline-page">
+    <p class="offline-badge" id="status-badge">Modo offline</p>
+    <h1 class="mt-4 text-2xl font-semibold text-brand-900">Reporte en vivo</h1>
+    <p class="mt-1 text-sm text-slate-600">
+      Puedes seguir reportando sin internet. Los votos se sincronizarán al recuperar conexión.
+    </p>
+
+    <div class="mt-6 grid grid-cols-3 gap-3">
+      <div class="stat-box">
+        <p class="stat-label">Mujeres</p>
+        <p id="count-female" class="stat-value text-brand-700">0</p>
+      </div>
+      <div class="stat-box">
+        <p class="stat-label">Hombres</p>
+        <p id="count-male" class="stat-value text-brand-700">0</p>
+      </div>
+      <div class="stat-box">
+        <p class="stat-label">Total</p>
+        <p id="count-total" class="stat-value text-accent-500">0</p>
+      </div>
+    </div>
+
+    <div class="mt-4 grid gap-3">
+      <button type="button" id="btn-female" class="vote-btn bg-rose-600" data-gender="female">Mujer</button>
+      <button type="button" id="btn-male" class="vote-btn bg-sky-700" data-gender="male">Hombre</button>
+    </div>
+
+    <p id="vote-feedback" class="mt-4 min-h-[1.25rem] text-center text-sm text-slate-600" aria-live="polite"></p>
+    <p id="pending-label" class="mt-2 text-center text-xs font-semibold text-amber-700"></p>
+
+    <div class="mt-6 flex flex-col gap-2">
+      <button type="button" id="btn-sync" class="action-btn action-btn-primary w-full">Sincronizar ahora</button>
+      <a href="/report/realtime" class="action-btn action-btn-secondary w-full text-center">Ir a tiempo real online</a>
+      <a href="/menu" class="action-btn action-btn-secondary w-full text-center">Menú</a>
+    </div>
+  </main>
+
+  <script src="/js/offline-queue.js"></script>
+  <script src="/js/offline-page.js"></script>
+</body>
+</html>

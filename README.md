@@ -86,9 +86,14 @@ npm run build:css
 
 `npm start` y `npm run dev` ejecutan el build automáticamente.
 
-- La app se puede instalar como PWA.
-- Si no hay red o el servidor no responde, los votos se encolan en IndexedDB.
-- Al recuperar conexión se sincronizan con `/api/votes/sync` sin duplicar (`clientId` único).
+## Offline / PWA
+
+1. Entra online al menos una vez (para instalar SW y cachear la app).
+2. En **Tiempo real** puedes votar sin red: se guarda en el teléfono y sincroniza al volver.
+3. También existe **`/offline.html`** (modo offline dedicado) si la red cae por completo.
+4. Si Render/Mongo no responden (timeout/503), el voto también se encola igual que offline.
+
+Instala la PWA desde el navegador para mejor experiencia sin conexión.
 
 ## Estructura
 

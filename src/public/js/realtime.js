@@ -4,25 +4,12 @@
   const countMale = document.getElementById('count-male');
   const countTotal = document.getElementById('count-total');
   const buttons = document.querySelectorAll('[data-gender]');
+  const syncStatus = document.getElementById('sync-status');
 
-  let localFemale = Number(countFemale?.textContent || 0);
-  let localMale = Number(countMale?.textContent || 0);
-
-  function renderCounts(counts) {
-    if (counts) {
-      localFemale = counts.female;
-      localMale = counts.male;
-    }
-    if (countFemale) countFemale.textContent = String(localFemale);
-    if (countMale) countMale.textContent = String(localMale);
-    if (countTotal) countTotal.textContent = String(localFemale + localMale);
-  }
-
-  function bumpLocal(gender) {
-    if (gender === 'female') localFemale += 1;
-    if (gender === 'male') localMale += 1;
-    renderCounts();
-  }
+  let serverFemale = Number(countFemale?.textContent || 0);
+  let serverMale = Number(countMale?.textContent || 0);
+  let pendingFemale = 0;
+  let pendingMale = 0;
 
   function formatLocal(iso) {
     try {
@@ -32,63 +19,73 @@
     }
   }
 
-  async function sendVote(gender) {
-    const clientId = window.OfflineQueue.uuid();
-    const createdAt = new Date().toISOString();
-    const item = {
-      type: 'realtime',
-      clientId,
-      payload: { gender },
-      createdAt,
-    };
+  function renderCounts() {
+    const female = serverFemale + pendingFemale;
+    const male = serverMale + pendingMale;
+    if (countFemale) countFemale.textContent = String(female);
+    if (countMale) countMale.textContent = String(male);
+    if (countTotal) countTotal.textContent = String(female + male);
+  }
 
-    bumpLocal(gender);
+  async function refreshPendingFromQueue() {
+    if (!window.OfflineQueue) return;
+    const local = await window.OfflineQueue.getLocalRealtimeTotals();
+    pendingFemale = local.female;
+    pendingMale = local.male;
+    renderCounts();
+    window.VotacionesApp?.updateOnlineUi();
+  }
+
+  async function sendVote(gender) {
     const label = gender === 'female' ? 'Voto mujer' : 'Voto hombre';
-    feedback.textContent = `${label} · ${formatLocal(createdAt)}`;
-    feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-emerald-700';
+    buttons.forEach((b) => {
+      b.disabled = true;
+    });
 
     try {
-      if (!navigator.onLine) throw new Error('offline');
+      const result = await window.OfflineQueue.sendOrQueueRealtime({ gender });
 
-      const res = await fetch('/api/votes/realtime', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ gender, clientId, createdAt }),
-      });
-
-      if (!res.ok) {
-        // 503 = Mongo/Render despertando → encolar como offline
-        throw new Error(res.status === 503 ? 'offline' : 'server');
+      if (!result.queued && result.counts) {
+        serverFemale = result.counts.female;
+        serverMale = result.counts.male;
       }
-      const data = await res.json();
-      if (data.counts) renderCounts(data.counts);
-      const when = formatLocal(data.reportedAt || createdAt);
-      feedback.textContent = `${label} registrado · ${when}`;
-      window.VotacionesApp?.updateOnlineUi();
+
+      await refreshPendingFromQueue();
+
+      if (result.queued) {
+        feedback.textContent = `${label} guardado localmente · ${formatLocal(result.createdAt)}. Se sincronizará al volver la conexión.`;
+        feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-amber-700';
+        if (syncStatus) {
+          syncStatus.textContent = 'Pendiente sync';
+          syncStatus.className = 'rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800';
+        }
+      } else {
+        feedback.textContent = `${label} registrado · ${formatLocal(result.reportedAt || result.createdAt)}`;
+        feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-emerald-700';
+      }
     } catch (err) {
-      await window.OfflineQueue.enqueue(item);
-      feedback.textContent = `Guardado localmente · ${formatLocal(createdAt)}. Se sincronizará cuando el servidor/Mongo respondan.`;
-      feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-amber-700';
-      window.VotacionesApp?.updateOnlineUi();
+      feedback.textContent = 'No se pudo guardar el voto. Intenta de nuevo.';
+      feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-rose-700';
+    } finally {
+      buttons.forEach((b) => {
+        b.disabled = false;
+      });
     }
   }
 
   buttons.forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      buttons.forEach((b) => { b.disabled = true; });
-      try {
-        await sendVote(btn.dataset.gender);
-      } finally {
-        buttons.forEach((b) => { b.disabled = false; });
-      }
-    });
+    btn.addEventListener('click', () => sendVote(btn.dataset.gender));
   });
 
-  document.addEventListener('votes:synced', (event) => {
+  document.addEventListener('votes:synced', async (event) => {
     if (event.detail?.counts) {
-      renderCounts(event.detail.counts);
-      feedback.textContent = 'Votos pendientes sincronizados.';
-      feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-emerald-700';
+      serverFemale = event.detail.counts.female;
+      serverMale = event.detail.counts.male;
     }
+    await refreshPendingFromQueue();
+    feedback.textContent = 'Votos pendientes sincronizados.';
+    feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-emerald-700';
   });
+
+  refreshPendingFromQueue();
 })();

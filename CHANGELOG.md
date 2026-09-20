@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.5 — 2026-09-19
+
+- Offline real en producción: página `/offline.html`, caché de shell, cola con timeout, sync con credenciales.
+- Si el servidor no responde (Render/Mongo), los votos se encolan igual que sin red.
+- Fix SW: iconos PWA faltantes tumaban `cache.addAll` y el Service Worker no se instalaba.
+- SW v12 con caché best-effort e `ignoreSearch` para CSS con `?v=`.
+
 ## 1.1.4 — 2026-09-19
 
 - Fix login en Render: `trust proxy`, cookies `sameSite`, `session.save` antes del redirect.

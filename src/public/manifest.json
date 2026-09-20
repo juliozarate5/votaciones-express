@@ -3,6 +3,7 @@
   "short_name": "Votaciones",
   "description": "Reporte de votos en tiempo real o total final, con soporte offline",
   "start_url": "/menu",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#eef8f7",
   "theme_color": "#0f4c5c",

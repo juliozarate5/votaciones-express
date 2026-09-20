@@ -1,15 +1,19 @@
-const CACHE_NAME = 'votaciones-shell-v10';
+const CACHE_NAME = 'votaciones-shell-v12';
+
 const SHELL = [
+  '/offline.html',
   '/css/app.css',
   '/js/app.js',
   '/js/offline-queue.js',
+  '/js/offline-page.js',
   '/js/realtime.js',
   '/js/total-form.js',
-  '/js/admin-charts.js',
   '/manifest.json',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
 ];
+
+const PAGE_CACHE = ['/offline.html', '/menu', '/report/realtime', '/report/total', '/login'];
 
 function isSameOriginHttpGet(request) {
   try {
@@ -28,8 +32,19 @@ function isStaticAsset(pathname) {
     pathname.startsWith('/css/') ||
     pathname.startsWith('/js/') ||
     pathname.startsWith('/icons/') ||
-    pathname === '/manifest.json'
+    pathname === '/manifest.json' ||
+    pathname === '/offline.html' ||
+    pathname === '/sw.js'
   );
+}
+
+async function cacheUrl(cache, url) {
+  try {
+    const res = await fetch(url, { credentials: 'same-origin', cache: 'no-cache' });
+    if (res.ok) await cache.put(url, res.clone());
+  } catch {
+    /* best-effort */
+  }
 }
 
 async function putInCache(request, response) {
@@ -42,19 +57,39 @@ async function putInCache(request, response) {
   }
 }
 
+async function matchCache(request) {
+  const url = new URL(request.url);
+  return (
+    (await caches.match(request, { ignoreSearch: true })) ||
+    (await caches.match(url.pathname)) ||
+    (await caches.match(url.pathname + url.search))
+  );
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(SHELL))
-      .then(() => self.skipWaiting())
-      .catch((err) => console.warn('SW install cache:', err))
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      // Best-effort: un asset faltante NO debe tumbar la instalación del SW
+      await Promise.all([...SHELL, ...PAGE_CACHE].map((url) => cacheUrl(cache, url)));
+      await self.skipWaiting();
+    })()
   );
 });
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+  if (event.data && event.data.type === 'CACHE_URLS') {
+    const urls = event.data.urls || [];
+    event.waitUntil(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        for (const url of urls) {
+          await cacheUrl(cache, url);
+        }
+      })
+    );
   }
 });
 
@@ -69,31 +104,60 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-
-  // Nunca interceptar POST/login/logout/HTML: el navegador habla directo con el servidor
   if (!isSameOriginHttpGet(request)) return;
 
   const url = new URL(request.url);
-  if (
-    url.pathname.startsWith('/api/') ||
-    url.pathname === '/login' ||
-    url.pathname === '/logout' ||
-    url.pathname === '/menu' ||
-    url.pathname.startsWith('/dashboard') ||
-    url.pathname.startsWith('/report')
-  ) {
+
+  if (url.pathname.startsWith('/api/')) return;
+
+  const isDocument =
+    request.mode === 'navigate' ||
+    (request.headers.get('accept') || '').includes('text/html');
+
+  if (isDocument) {
+    event.respondWith(
+      (async () => {
+        try {
+          const fresh = await fetch(request);
+          if (fresh.ok) {
+            const cacheablePaths = ['/menu', '/report/realtime', '/report/total', '/offline.html', '/login'];
+            if (cacheablePaths.includes(url.pathname)) {
+              await putInCache(request, fresh);
+              // También por pathname (sin query) para matches offline
+              const cache = await caches.open(CACHE_NAME);
+              await cache.put(url.pathname, fresh.clone());
+            }
+          }
+          return fresh;
+        } catch {
+          const cached =
+            (await matchCache(request)) ||
+            (await caches.match(url.pathname)) ||
+            (await caches.match('/offline.html'));
+          return cached || Response.error();
+        }
+      })()
+    );
     return;
   }
 
-  // Solo assets estáticos (CSS/JS/iconos)
   if (!isStaticAsset(url.pathname)) return;
 
   event.respondWith(
-    fetch(request)
-      .then(async (response) => {
-        await putInCache(request, response);
-        return response;
-      })
-      .catch(() => caches.match(request))
+    (async () => {
+      const cached = await matchCache(request);
+      try {
+        const fresh = await fetch(request);
+        await putInCache(request, fresh);
+        // Cachear también sin query (?v=11)
+        if (fresh.ok && url.search) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(url.pathname, fresh.clone());
+        }
+        return fresh;
+      } catch {
+        return cached || Response.error();
+      }
+    })()
   );
 });

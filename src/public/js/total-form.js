@@ -148,12 +148,13 @@
     };
 
     const when = new Date(createdAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'medium' });
+    const fetchFn = window.OfflineQueue?.fetchWithTimeout || fetch;
 
     try {
-      if (!navigator.onLine) throw new Error('offline');
-      const res = await fetch('/api/votes/total', {
+      const res = await fetchFn('/api/votes/total', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ women, men, total, clientId, createdAt }),
       });
       if (!res.ok) {
@@ -173,9 +174,10 @@
     } catch (err) {
       if (window.OfflineQueue) {
         await window.OfflineQueue.enqueue(payload);
-        feedback.textContent = `Sin conexión: guardado local · ${when}. Se sincronizará luego.`;
+        feedback.textContent = `Sin conexión o servidor lento: guardado local · ${when}. Se sincronizará luego.`;
         feedback.className = 'min-h-[1.25rem] text-sm text-amber-700';
         form.reset();
+        window.VotacionesApp?.updateOnlineUi();
       } else {
         feedback.textContent = err.message || 'No se pudo guardar';
         feedback.className = 'min-h-[1.25rem] text-sm text-rose-700';
