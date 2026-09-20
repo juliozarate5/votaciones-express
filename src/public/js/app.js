@@ -24,21 +24,28 @@
     }
   }
 
+  let syncInFlight = null;
+
   async function trySync() {
     if (!window.OfflineQueue) return;
-    try {
-      const result = await window.OfflineQueue.sync({ force: true });
-      // Solo avisar a la UI si hubo sync real o si traemos conteos frescos tras sync
-      if (result.synced > 0) {
-        document.dispatchEvent(new CustomEvent('votes:synced', { detail: result }));
-      } else if (result.counts && document.getElementById('count-female')) {
-        document.dispatchEvent(new CustomEvent('votes:synced', { detail: result }));
+    if (syncInFlight) return syncInFlight;
+    syncInFlight = (async () => {
+      try {
+        const result = await window.OfflineQueue.sync({ force: true });
+        if (result.synced > 0) {
+          document.dispatchEvent(new CustomEvent('votes:synced', { detail: result }));
+        } else if (result.counts && document.getElementById('count-female')) {
+          document.dispatchEvent(new CustomEvent('votes:synced', { detail: result }));
+        }
+        updateOnlineUi();
+      } catch (err) {
+        console.warn('Sync pendiente:', err);
+        updateOnlineUi();
+      } finally {
+        syncInFlight = null;
       }
-      updateOnlineUi();
-    } catch (err) {
-      console.warn('Sync pendiente:', err);
-      updateOnlineUi();
-    }
+    })();
+    return syncInFlight;
   }
 
   function prefetchOfflineShell() {
@@ -51,7 +58,7 @@
         '/report/realtime',
         '/report/total',
         '/css/app.css',
-        '/css/app.css?v=17',
+        '/css/app.css?v=18',
         '/js/offline-queue.js',
         '/js/confirm-dialog.js',
         '/js/realtime.js',

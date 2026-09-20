@@ -33,24 +33,37 @@ async function applyGenderDeltaToLatestFinal(reporterName, gender, delta) {
 
 async function saveRealtimeVote({ reporterName, gender, clientId, createdAt }) {
   const key = normalizeReporterName(reporterName);
-  const existing = await VoteReport.findOne({ clientId }).lean();
-  if (existing) {
-    return { created: false, report: existing, latestFinal: await getLatestTotal(key) };
+
+  try {
+    const existing = await VoteReport.findOne({ clientId }).lean();
+    if (existing) {
+      // Idempotencia: no crear ni sumar otra vez al final
+      return { created: false, report: existing, latestFinal: await getLatestTotal(key) };
+    }
+
+    const report = await VoteReport.create({
+      reporterName: key,
+      type: 'realtime',
+      gender,
+      clientId,
+      syncedAt: new Date(),
+      createdAt: createdAt ? new Date(createdAt) : undefined,
+    });
+
+    // Si ya hay un total final, estos votos se suman al último final
+    const latestFinal = await applyGenderDeltaToLatestFinal(key, gender, 1);
+
+    return { created: true, report, latestFinal };
+  } catch (err) {
+    // Carrera: otro request creó el mismo clientId
+    if (err && (err.code === 11000 || String(err.message || '').includes('E11000'))) {
+      const existing = await VoteReport.findOne({ clientId }).lean();
+      if (existing) {
+        return { created: false, report: existing, latestFinal: await getLatestTotal(key) };
+      }
+    }
+    throw err;
   }
-
-  const report = await VoteReport.create({
-    reporterName: key,
-    type: 'realtime',
-    gender,
-    clientId,
-    syncedAt: new Date(),
-    createdAt: createdAt ? new Date(createdAt) : undefined,
-  });
-
-  // Si ya hay un total final, estos votos se suman al último final
-  const latestFinal = await applyGenderDeltaToLatestFinal(key, gender, 1);
-
-  return { created: true, report, latestFinal };
 }
 
 async function saveTotalReport({ reporterName, women, men, total, clientId, createdAt }) {

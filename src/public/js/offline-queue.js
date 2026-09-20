@@ -2,8 +2,10 @@
   const DB_NAME = 'votaciones-offline';
   const STORE = 'queue';
   const DB_VERSION = 1;
-  const FETCH_TIMEOUT_MS = 10000;
+  const FETCH_TIMEOUT_MS = 12000;
   const BASELINE_KEY = 'votaciones:serverCounts';
+
+  let syncInFlight = null;
 
   function openDb() {
     return new Promise((resolve, reject) => {
@@ -155,7 +157,7 @@
     return data.counts || null;
   }
 
-  async function sync(options = {}) {
+  async function syncOnce(options = {}) {
     if (!options.force && !navigator.onLine) {
       return { synced: 0, pending: await pendingCount(), counts: readBaseline() };
     }
@@ -192,6 +194,20 @@
     return { synced: okIds.length, pending, counts, results: data.results };
   }
 
+  /** Una sola sync a la vez (online + interval + página no duplican envíos). */
+  function sync(options = {}) {
+    if (syncInFlight) return syncInFlight;
+    syncInFlight = syncOnce(options).finally(() => {
+      syncInFlight = null;
+    });
+    return syncInFlight;
+  }
+
+  /**
+   * Outbox: siempre se encola primero con un clientId estable.
+   * Si el POST ok, se saca de la cola. Si falla/timeout, queda para sync.
+   * Así un timeout tras éxito en servidor NO crea otro voto (mismo clientId).
+   */
   async function sendOrQueueRealtime({ gender, clientId, createdAt }) {
     if (!['female', 'male'].includes(gender)) {
       throw new Error('Género inválido');
@@ -203,6 +219,12 @@
       payload: { gender },
       createdAt: createdAt || new Date().toISOString(),
     };
+
+    await enqueue(item);
+
+    if (!navigator.onLine) {
+      return { queued: true, offline: true, clientId: item.clientId, createdAt: item.createdAt };
+    }
 
     try {
       const res = await fetchWithTimeout('/api/votes/realtime', {
@@ -216,11 +238,11 @@
       });
 
       if (!res.ok) {
-        await enqueue(item);
         return { queued: true, offline: res.status >= 500, clientId: item.clientId, createdAt: item.createdAt };
       }
 
       const data = await res.json();
+      await removeByClientId(item.clientId);
       if (data.counts) writeBaseline(data.counts);
       return {
         queued: false,
@@ -231,7 +253,7 @@
         reportedAt: data.reportedAt,
       };
     } catch (err) {
-      await enqueue(item);
+      // Se mantiene en cola; sync lo enviará con el mismo clientId (idempotente)
       return { queued: true, offline: true, clientId: item.clientId, createdAt: item.createdAt, error: err.message };
     }
   }
