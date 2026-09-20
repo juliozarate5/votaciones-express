@@ -1,4 +1,4 @@
-const CACHE_NAME = 'votaciones-shell-v15';
+const CACHE_NAME = 'votaciones-shell-v16';
 
 const SHELL = [
   '/offline.html',
@@ -131,9 +131,12 @@ self.addEventListener('fetch', (event) => {
           }
           return fresh;
         } catch {
+          // Misma pantalla de conteo si está en caché; offline.html solo como último recurso
           const cached =
             (await matchCache(request)) ||
             (await caches.match(url.pathname)) ||
+            (await caches.match('/report/realtime')) ||
+            (await caches.match('/menu')) ||
             (await caches.match('/offline.html'));
           return cached || Response.error();
         }

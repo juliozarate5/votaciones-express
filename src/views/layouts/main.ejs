@@ -9,7 +9,7 @@
   <link rel="icon" href="/icons/icon-192.png" type="image/png" />
   <link rel="apple-touch-icon" href="/icons/icon-192.png" />
   <title><%= typeof title !== 'undefined' ? title + ' · ' : '' %>Votaciones</title>
-  <link rel="stylesheet" href="/css/app.css?v=15" />
+  <link rel="stylesheet" href="/css/app.css?v=16" />
 </head>
 <body class="min-h-screen bg-gradient-to-br from-brand-50 via-white to-teal-50 text-slate-800 font-body antialiased">
   <%- include('../partials/header') %>
@@ -18,7 +18,7 @@
     <%- body %>
   </main>
   <div id="offline-banner" class="offline-banner hidden" role="status">
-    Sin conexión — los votos se guardarán y sincronizarán luego
+    Sin conexión — puedes seguir votando; se sincronizará al volver la red
   </div>
   <%- include('../partials/confirm-modal') %>
   <script src="/js/offline-queue.js" defer></script>

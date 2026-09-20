@@ -51,7 +51,7 @@
         '/report/realtime',
         '/report/total',
         '/css/app.css',
-        '/css/app.css?v=15',
+        '/css/app.css?v=16',
         '/js/offline-queue.js',
         '/js/confirm-dialog.js',
         '/js/realtime.js',

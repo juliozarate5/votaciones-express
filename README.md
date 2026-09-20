@@ -88,10 +88,9 @@ npm run build:css
 
 ## Offline / PWA
 
-1. Entra online al menos una vez (para instalar SW y cachear la app).
-2. En **Tiempo real** puedes votar sin red: se guarda en el teléfono y sincroniza al volver.
-3. También existe **`/offline.html`** (modo offline dedicado) si la red cae por completo.
-4. Si Render/Mongo no responden (timeout/503), el voto también se encola igual que offline.
+1. Entra **online** al menos una vez (instala el Service Worker y cachea la app).
+2. En **Contar voto a voto**, si se cae la red **no haces nada extra**: sigues en la misma pantalla, los votos se guardan en el teléfono y se sincronizan solos al volver.
+3. Si Render/Mongo no responden (timeout/503), el voto también se encola igual que sin red.
 
 Instala la PWA desde el navegador para mejor experiencia sin conexión.
 

@@ -292,6 +292,18 @@
     }
   });
 
+  window.addEventListener('offline', () => {
+    feedback.textContent = 'Sin conexión: puedes seguir votando; se guardará en este dispositivo.';
+    feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-amber-700';
+    window.VotacionesApp?.updateOnlineUi();
+  });
+
+  window.addEventListener('online', () => {
+    feedback.textContent = 'Conexión recuperada. Sincronizando…';
+    feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-sky-700';
+    window.VotacionesApp?.trySync();
+  });
+
   renderCounts();
   renderLastVote();
   refreshPendingFromQueue().then(() => {
