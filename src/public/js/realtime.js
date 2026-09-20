@@ -12,9 +12,12 @@
   const finalBanner = document.getElementById('final-banner');
   const finalBannerText = document.getElementById('final-banner-text');
 
+  const htmlFemale = Number(countFemale?.textContent || 0);
+  const htmlMale = Number(countMale?.textContent || 0);
   const baseline = window.OfflineQueue?.readBaseline?.();
-  let serverFemale = baseline?.female ?? Number(countFemale?.textContent || 0);
-  let serverMale = baseline?.male ?? Number(countMale?.textContent || 0);
+  // Preferir el mayor entre HTML (servidor) y baseline local; no pisar con 0 viejo
+  let serverFemale = Math.max(htmlFemale, Number(baseline?.female || 0));
+  let serverMale = Math.max(htmlMale, Number(baseline?.male || 0));
   let pendingFemale = 0;
   let pendingMale = 0;
   let lastVote = null;
@@ -33,8 +36,19 @@
     latestFinal = null;
   }
 
-  // Persistir conteo inicial del HTML para no perderlo offline
-  window.OfflineQueue?.writeBaseline?.({ female: serverFemale, male: serverMale });
+  function whenQueueReady(fn) {
+    if (window.OfflineQueue) {
+      fn();
+      return;
+    }
+    const started = Date.now();
+    const timer = setInterval(() => {
+      if (window.OfflineQueue || Date.now() - started > 4000) {
+        clearInterval(timer);
+        fn();
+      }
+    }, 25);
+  }
 
   function genderLabel(gender) {
     return gender === 'female' ? 'Mujer' : 'Hombre';
@@ -333,8 +347,14 @@
   renderCounts();
   renderFinalBanner();
   renderLastVote();
-  refreshPendingFromQueue().then(() => {
-    if (navigator.onLine) hydrateFromServer();
-    else refreshLastVoteOnly();
+
+  whenQueueReady(() => {
+    if (serverFemale || serverMale) {
+      window.OfflineQueue?.writeBaseline?.({ female: serverFemale, male: serverMale });
+    }
+    refreshPendingFromQueue().then(() => {
+      if (navigator.onLine) hydrateFromServer();
+      else refreshLastVoteOnly();
+    });
   });
 })();
