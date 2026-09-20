@@ -1,4 +1,4 @@
-const CACHE_NAME = 'votaciones-shell-v14';
+const CACHE_NAME = 'votaciones-shell-v15';
 
 const SHELL = [
   '/offline.html',

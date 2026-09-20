@@ -2,7 +2,8 @@
   const DB_NAME = 'votaciones-offline';
   const STORE = 'queue';
   const DB_VERSION = 1;
-  const FETCH_TIMEOUT_MS = 8000;
+  const FETCH_TIMEOUT_MS = 10000;
+  const BASELINE_KEY = 'votaciones:serverCounts';
 
   function openDb() {
     return new Promise((resolve, reject) => {
@@ -25,6 +26,30 @@
       const v = c === 'x' ? r : (r & 0x3) | 0x8;
       return v.toString(16);
     });
+  }
+
+  function readBaseline() {
+    try {
+      const raw = sessionStorage.getItem(BASELINE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.female !== 'number' || typeof parsed?.male !== 'number') return null;
+      return { female: parsed.female, male: parsed.male, total: parsed.female + parsed.male };
+    } catch {
+      return null;
+    }
+  }
+
+  function writeBaseline(counts) {
+    if (!counts || typeof counts.female !== 'number' || typeof counts.male !== 'number') return;
+    try {
+      sessionStorage.setItem(
+        BASELINE_KEY,
+        JSON.stringify({ female: counts.female, male: counts.male })
+      );
+    } catch {
+      /* ignore */
+    }
   }
 
   async function enqueue(item) {
@@ -110,17 +135,41 @@
     return fetch(url, {
       ...options,
       credentials: 'same-origin',
+      cache: 'no-store',
       signal: controller.signal,
     }).finally(() => clearTimeout(timer));
   }
 
+  async function fetchServerCounts() {
+    const res = await fetchWithTimeout('/api/votes/counts', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) {
+      const err = new Error('No se pudieron leer conteos');
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    if (data.counts) writeBaseline(data.counts);
+    return data.counts || null;
+  }
+
   async function sync(options = {}) {
     if (!options.force && !navigator.onLine) {
-      return { synced: 0, pending: await pendingCount() };
+      return { synced: 0, pending: await pendingCount(), counts: readBaseline() };
     }
 
     const items = await getAll();
-    if (!items.length) return { synced: 0, pending: 0 };
+    if (!items.length) {
+      let counts = null;
+      try {
+        counts = await fetchServerCounts();
+      } catch {
+        counts = readBaseline();
+      }
+      return { synced: 0, pending: 0, counts };
+    }
 
     const res = await fetchWithTimeout('/api/votes/sync', {
       method: 'POST',
@@ -138,11 +187,16 @@
     const okIds = (data.results || []).filter((r) => r.ok).map((r) => r.clientId);
     await removeMany(okIds);
     const pending = await pendingCount();
-    return { synced: okIds.length, pending, counts: data.counts };
+    const counts = data.counts || null;
+    if (counts) writeBaseline(counts);
+    return { synced: okIds.length, pending, counts, results: data.results };
   }
 
-  /** Intenta enviar un voto; si falla/timeout/503, lo encola. */
   async function sendOrQueueRealtime({ gender, clientId, createdAt }) {
+    if (!['female', 'male'].includes(gender)) {
+      throw new Error('Género inválido');
+    }
+
     const item = {
       type: 'realtime',
       clientId: clientId || uuid(),
@@ -167,6 +221,7 @@
       }
 
       const data = await res.json();
+      if (data.counts) writeBaseline(data.counts);
       return {
         queued: false,
         offline: false,
@@ -193,5 +248,8 @@
     sync,
     sendOrQueueRealtime,
     fetchWithTimeout,
+    fetchServerCounts,
+    readBaseline,
+    writeBaseline,
   };
 })();

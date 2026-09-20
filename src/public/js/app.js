@@ -28,7 +28,10 @@
     if (!window.OfflineQueue) return;
     try {
       const result = await window.OfflineQueue.sync({ force: true });
+      // Solo avisar a la UI si hubo sync real o si traemos conteos frescos tras sync
       if (result.synced > 0) {
+        document.dispatchEvent(new CustomEvent('votes:synced', { detail: result }));
+      } else if (result.counts && document.getElementById('count-female')) {
         document.dispatchEvent(new CustomEvent('votes:synced', { detail: result }));
       }
       updateOnlineUi();
@@ -48,7 +51,7 @@
         '/report/realtime',
         '/report/total',
         '/css/app.css',
-        '/css/app.css?v=14',
+        '/css/app.css?v=15',
         '/js/offline-queue.js',
         '/js/confirm-dialog.js',
         '/js/realtime.js',

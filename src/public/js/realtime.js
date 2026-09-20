@@ -10,18 +10,23 @@
   const btnSwitch = document.getElementById('btn-switch-last');
   const btnAnnul = document.getElementById('btn-annul-last');
 
-  let serverFemale = Number(countFemale?.textContent || 0);
-  let serverMale = Number(countMale?.textContent || 0);
+  const baseline = window.OfflineQueue?.readBaseline?.();
+  let serverFemale = baseline?.female ?? Number(countFemale?.textContent || 0);
+  let serverMale = baseline?.male ?? Number(countMale?.textContent || 0);
   let pendingFemale = 0;
   let pendingMale = 0;
   let lastVote = null;
   let busy = false;
+  let fetchGen = 0;
 
   try {
     lastVote = JSON.parse(document.getElementById('initial-last-vote')?.textContent || 'null');
   } catch {
     lastVote = null;
   }
+
+  // Persistir conteo inicial del HTML para no perderlo offline
+  window.OfflineQueue?.writeBaseline?.({ female: serverFemale, male: serverMale });
 
   function genderLabel(gender) {
     return gender === 'female' ? 'Mujer' : 'Hombre';
@@ -41,6 +46,14 @@
     if (countFemale) countFemale.textContent = String(female);
     if (countMale) countMale.textContent = String(male);
     if (countTotal) countTotal.textContent = String(female + male);
+  }
+
+  function applyServerCounts(counts) {
+    if (!counts || typeof counts.female !== 'number' || typeof counts.male !== 'number') return;
+    serverFemale = counts.female;
+    serverMale = counts.male;
+    window.OfflineQueue?.writeBaseline?.(counts);
+    renderCounts();
   }
 
   function renderLastVote() {
@@ -77,7 +90,7 @@
     window.VotacionesApp?.updateOnlineUi();
   }
 
-  async function preferQueuedLastOrServer() {
+  async function refreshLastVoteOnly() {
     const queued = await window.OfflineQueue?.getLastQueuedRealtime?.();
     if (queued) {
       setLastVote({
@@ -88,36 +101,36 @@
       });
       return;
     }
-    await syncLastFromServer();
-  }
 
-  async function syncLastFromServer() {
-    if (!window.OfflineQueue?.fetchWithTimeout) return;
+    if (!navigator.onLine || !window.OfflineQueue?.fetchWithTimeout) return;
+
+    const gen = ++fetchGen;
     try {
       const res = await window.OfflineQueue.fetchWithTimeout('/api/votes/realtime/last', {
         method: 'GET',
         headers: { Accept: 'application/json' },
       });
-      if (!res.ok) return;
+      if (!res.ok || gen !== fetchGen) return;
       const data = await res.json();
-      if (data.counts) {
-        serverFemale = data.counts.female;
-        serverMale = data.counts.male;
-        renderCounts();
-      }
-      const queued = await window.OfflineQueue.getLastQueuedRealtime?.();
-      if (queued) {
-        setLastVote({
-          clientId: queued.clientId,
-          gender: queued.payload?.gender || queued.gender,
-          createdAt: queued.createdAt,
-          local: true,
-        });
-      } else {
-        setLastVote(data.lastVote || null);
-      }
+      if (gen !== fetchGen) return;
+      // Solo actualizar último voto; los conteos ya se manejan aparte
+      setLastVote(data.lastVote || null);
     } catch {
       /* ignore */
+    }
+  }
+
+  async function hydrateFromServer() {
+    if (!navigator.onLine || !window.OfflineQueue?.fetchServerCounts) return;
+    const gen = ++fetchGen;
+    try {
+      const counts = await window.OfflineQueue.fetchServerCounts();
+      if (gen !== fetchGen || !counts) return;
+      applyServerCounts(counts);
+      await refreshPendingFromQueue();
+      await refreshLastVoteOnly();
+    } catch {
+      await refreshPendingFromQueue();
     }
   }
 
@@ -133,8 +146,7 @@
       const result = await window.OfflineQueue.sendOrQueueRealtime({ gender });
 
       if (!result.queued && result.counts) {
-        serverFemale = result.counts.female;
-        serverMale = result.counts.male;
+        applyServerCounts(result.counts);
       }
 
       await refreshPendingFromQueue();
@@ -192,7 +204,7 @@
         const removed = await window.OfflineQueue.removeByClientId(lastVote.clientId);
         if (removed) {
           await refreshPendingFromQueue();
-          await preferQueuedLastOrServer();
+          await refreshLastVoteOnly();
           feedback.textContent = 'Último voto anulado.';
           feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-emerald-700';
           return;
@@ -234,23 +246,9 @@
       }
 
       const data = await res.json();
-      if (data.counts) {
-        serverFemale = data.counts.female;
-        serverMale = data.counts.male;
-      }
+      if (data.counts) applyServerCounts(data.counts);
       await refreshPendingFromQueue();
-
-      const queued = await window.OfflineQueue.getLastQueuedRealtime?.();
-      if (queued) {
-        setLastVote({
-          clientId: queued.clientId,
-          gender: queued.payload?.gender || queued.gender,
-          createdAt: queued.createdAt,
-          local: true,
-        });
-      } else {
-        setLastVote(data.lastVote || null);
-      }
+      setLastVote(data.lastVote || null);
 
       feedback.textContent =
         action === 'annul'
@@ -277,15 +275,27 @@
 
   document.addEventListener('votes:synced', async (event) => {
     if (event.detail?.counts) {
-      serverFemale = event.detail.counts.female;
-      serverMale = event.detail.counts.male;
+      applyServerCounts(event.detail.counts);
+    } else if (navigator.onLine) {
+      try {
+        const counts = await window.OfflineQueue.fetchServerCounts();
+        if (counts) applyServerCounts(counts);
+      } catch {
+        /* keep baseline */
+      }
     }
     await refreshPendingFromQueue();
-    await preferQueuedLastOrServer();
-    feedback.textContent = 'Votos pendientes sincronizados.';
-    feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-emerald-700';
+    await refreshLastVoteOnly();
+    if (event.detail?.synced > 0) {
+      feedback.textContent = `Votos sincronizados (${event.detail.synced}).`;
+      feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-emerald-700';
+    }
   });
 
+  renderCounts();
   renderLastVote();
-  refreshPendingFromQueue().then(() => preferQueuedLastOrServer());
+  refreshPendingFromQueue().then(() => {
+    if (navigator.onLine) hydrateFromServer();
+    else refreshLastVoteOnly();
+  });
 })();

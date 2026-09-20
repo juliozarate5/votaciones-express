@@ -113,16 +113,19 @@ async function createTotal(req, res) {
 async function syncVotes(req, res) {
   try {
     const items = Array.isArray(req.body.items) ? req.body.items : [];
+    const key = reporterKey(req);
+
     if (items.length === 0) {
-      return res.json({ ok: true, results: [] });
+      const counts = await voteService.getRealtimeCounts(key);
+      return res.json({ ok: true, results: [], counts });
     }
 
     const results = await voteService.syncBatch({
-      reporterName: reporterKey(req),
+      reporterName: key,
       items,
     });
 
-    const counts = await voteService.getRealtimeCounts(reporterKey(req));
+    const counts = await voteService.getRealtimeCounts(key);
     return res.json({ ok: true, results, counts });
   } catch (err) {
     console.error(err);

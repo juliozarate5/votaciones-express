@@ -8,16 +8,33 @@
   const buttons = document.querySelectorAll('[data-gender]');
   const btnSync = document.getElementById('btn-sync');
 
-  function render(female, male) {
+  let serverFemale = window.OfflineQueue?.readBaseline?.()?.female || 0;
+  let serverMale = window.OfflineQueue?.readBaseline?.()?.male || 0;
+  let pendingFemale = 0;
+  let pendingMale = 0;
+
+  function render() {
+    const female = serverFemale + pendingFemale;
+    const male = serverMale + pendingMale;
     countFemale.textContent = String(female);
     countMale.textContent = String(male);
     countTotal.textContent = String(female + male);
   }
 
+  function applyServerCounts(counts) {
+    if (!counts || typeof counts.female !== 'number' || typeof counts.male !== 'number') return;
+    serverFemale = counts.female;
+    serverMale = counts.male;
+    window.OfflineQueue?.writeBaseline?.(counts);
+    render();
+  }
+
   async function refreshPending() {
     const pending = await window.OfflineQueue.pendingCount();
     const local = await window.OfflineQueue.getLocalRealtimeTotals();
-    render(local.female, local.male);
+    pendingFemale = local.female;
+    pendingMale = local.male;
+    render();
     pendingLabel.textContent = pending
       ? `${pending} voto(s) pendiente(s) de sincronizar`
       : 'No hay pendientes locales';
@@ -32,6 +49,9 @@
 
   async function addVote(gender) {
     const result = await window.OfflineQueue.sendOrQueueRealtime({ gender });
+    if (!result.queued && result.counts) {
+      applyServerCounts(result.counts);
+    }
     await refreshPending();
     const label = gender === 'female' ? 'Mujer' : 'Hombre';
     if (result.queued) {
@@ -47,11 +67,17 @@
     feedback.textContent = 'Sincronizando…';
     try {
       const result = await window.OfflineQueue.sync({ force: true });
+      if (result.counts) applyServerCounts(result.counts);
+      await refreshPending();
       feedback.textContent = result.synced
         ? `Sincronizados ${result.synced} voto(s).`
-        : 'Nada pendiente o el servidor aún no responde.';
+        : result.pending
+          ? 'Aún hay pendientes; el servidor no aceptó todo.'
+          : 'Todo al día.';
       feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-emerald-700';
-      await refreshPending();
+      if (result.synced > 0) {
+        document.dispatchEvent(new CustomEvent('votes:synced', { detail: result }));
+      }
     } catch (err) {
       feedback.textContent = 'No se pudo sincronizar. Sigue reportando offline.';
       feedback.className = 'mt-4 min-h-[1.25rem] text-center text-sm text-rose-700';
@@ -77,6 +103,8 @@
   window.addEventListener('offline', () => setOnlineUi(false));
 
   setOnlineUi(navigator.onLine);
-  refreshPending();
-  if (navigator.onLine) syncNow();
+  render();
+  refreshPending().then(() => {
+    if (navigator.onLine) syncNow();
+  });
 })();
