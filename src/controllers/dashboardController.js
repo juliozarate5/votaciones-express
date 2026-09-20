@@ -22,6 +22,51 @@ async function showAdmin(req, res) {
   });
 }
 
+async function getReporterDetail(req, res) {
+  try {
+    const key = normalizeReporterName(req.params.key || '');
+    if (!key) {
+      return res.status(400).json({ ok: false, error: 'Persona inválida' });
+    }
+    const detail = await voteService.getReporterSummary(key);
+    return res.json({
+      ok: true,
+      detail: {
+        reporterName: detail.reporterName,
+        current: detail.latestFinal
+          ? {
+              women: detail.latestFinal.women || 0,
+              men: detail.latestFinal.men || 0,
+              total: detail.latestFinal.total || 0,
+              at: detail.latestFinal.createdAt || detail.latestFinal.syncedAt,
+            }
+          : {
+              women: detail.realtime.female,
+              men: detail.realtime.male,
+              total: detail.realtime.total,
+              at: detail.realtime.lastAt,
+            },
+        totalsHistory: (detail.totals || []).map((row) => ({
+          women: row.women || 0,
+          men: row.men || 0,
+          total: row.total || 0,
+          at: row.createdAt || row.syncedAt,
+        })),
+        realtimeSession: {
+          female: detail.realtime.female,
+          male: detail.realtime.male,
+          total: detail.realtime.total,
+          firstAt: detail.realtime.firstAt,
+          lastAt: detail.realtime.lastAt,
+        },
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: 'No se pudo cargar el detalle' });
+  }
+}
+
 async function showStats(req, res) {
   const summary = await voteService.getAdminSummary();
   const charts = exportService.chartPayload(summary);
@@ -105,6 +150,7 @@ async function resetDatabase(req, res) {
 module.exports = {
   showMine,
   showAdmin,
+  getReporterDetail,
   showStats,
   exportExcel,
   exportPdf,

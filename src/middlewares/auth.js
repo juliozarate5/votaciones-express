@@ -36,9 +36,20 @@ function requireApiLogin(req, res, next) {
   return next();
 }
 
+function requireApiAdmin(req, res, next) {
+  if (!req.session.user) {
+    return res.status(401).json({ ok: false, error: 'No autenticado' });
+  }
+  if (req.session.user.role !== 'admin') {
+    return res.status(403).json({ ok: false, error: 'Sin permiso de administrador' });
+  }
+  return next();
+}
+
 module.exports = {
   requireLogin,
   requireAdmin,
   requireReporter,
   requireApiLogin,
+  requireApiAdmin,
 };

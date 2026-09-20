@@ -3,7 +3,7 @@
     <div>
       <%- include('../partials/back-link', { backHref: '/menu', backLabel: 'Volver al menú' }) %>
       <h1 class="mt-1 text-2xl font-semibold text-brand-900">Reporte de todos</h1>
-      <p class="mt-1 text-sm text-slate-600">Totales reportados por persona.</p>
+      <p class="mt-1 text-sm text-slate-600">Totales reportados. Clic en el nombre para ver historial.</p>
     </div>
     <div class="flex flex-wrap gap-2">
       <a href="/dashboard/stats" class="action-btn action-btn-secondary">Dashboard</a>
@@ -41,7 +41,13 @@
     <div class="admin-cards space-y-3 screen-only">
       <% official.rows.forEach(function (row) { %>
         <article class="reporter-card">
-          <h3 class="reporter-card-name"><%= row.reporterName %></h3>
+          <button
+            type="button"
+            class="reporter-card-name text-left underline decoration-brand-500/40 underline-offset-2 hover:text-brand-700"
+            data-reporter-key="<%= row.reporterKey %>"
+          >
+            <%= row.reporterName %>
+          </button>
           <div class="reporter-card-block">
             <div class="reporter-card-grid">
               <div>
@@ -59,6 +65,9 @@
             </div>
             <% if (row.reportedAt) { %>
               <p class="mt-2 text-center text-xs text-slate-500">Actualizado: <%= formatDateTime(row.reportedAt) %></p>
+            <% } %>
+            <% if (row.totalReports > 0) { %>
+              <p class="mt-1 text-center text-xs text-slate-400"><%= row.totalReports %> envío(s) de total</p>
             <% } %>
           </div>
         </article>
@@ -99,7 +108,15 @@
         <tbody>
           <% official.rows.forEach(function (row) { %>
             <tr class="border-b border-slate-100">
-              <td class="py-2 pr-3 font-medium text-brand-900 sticky left-0 bg-white"><%= row.reporterName %></td>
+              <td class="py-2 pr-3 font-medium sticky left-0 bg-white">
+                <button
+                  type="button"
+                  class="text-brand-900 underline decoration-brand-500/40 underline-offset-2 hover:text-brand-700"
+                  data-reporter-key="<%= row.reporterKey %>"
+                >
+                  <%= row.reporterName %>
+                </button>
+              </td>
               <td class="py-2 pr-3"><%= row.women %></td>
               <td class="py-2 pr-3"><%= row.men %></td>
               <td class="py-2 pr-3 font-semibold"><%= row.total %></td>
@@ -154,3 +171,32 @@
     </div>
   <% } %>
 </section>
+
+<!-- Modal detalle / auditoría -->
+<div
+  id="reporter-detail-modal"
+  class="fixed inset-0 z-50 hidden items-end justify-center bg-slate-900/50 p-4 no-print sm:items-center"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="reporter-detail-title"
+  aria-hidden="true"
+>
+  <div class="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200">
+    <div class="flex items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4">
+      <div>
+        <p id="reporter-detail-title" class="text-lg font-bold text-brand-900">Detalle</p>
+        <p class="mt-0.5 text-xs text-slate-500">Auditoría de totales enviados</p>
+      </div>
+      <button
+        type="button"
+        id="reporter-detail-close"
+        class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+      >
+        Cerrar
+      </button>
+    </div>
+    <div id="reporter-detail-body" class="overflow-y-auto px-5 py-4"></div>
+  </div>
+</div>
+
+<script src="/js/admin-reporter-detail.js" defer></script>

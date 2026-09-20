@@ -19,19 +19,23 @@ function toOfficialReport(summary) {
 
     if (useFinal) {
       return {
+        reporterKey: row.reporterKey || null,
         reporterName: row.reporterName,
         women: row.totalWomen || 0,
         men: row.totalMen || 0,
         total: row.totalVotes || 0,
+        totalReports: row.totalReports || 0,
         reportedAt: row.lastTotalAt || row.lastRealtimeAt || null,
       };
     }
 
     return {
+      reporterKey: row.reporterKey || null,
       reporterName: row.reporterName,
       women: row.realtimeFemale || 0,
       men: row.realtimeMale || 0,
       total: row.realtimeTotal || 0,
+      totalReports: row.totalReports || 0,
       reportedAt: row.lastRealtimeAt || null,
     };
   });

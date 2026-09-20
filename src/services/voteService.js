@@ -207,6 +207,7 @@ async function getAdminSummary() {
     const at = report.createdAt || report.syncedAt;
     if (!byReporter.has(key)) {
       byReporter.set(key, {
+        reporterKey: key,
         reporterName: displayReporterName(key),
         realtimeFemale: 0,
         realtimeMale: 0,
