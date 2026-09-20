@@ -14,6 +14,9 @@ const { pingDatabase, isDatabaseReady, requireDatabase } = require('./configurat
 
 const app = express();
 
+// Render (y otros proxies) terminan HTTPS delante de Node
+app.set('trust proxy', 1);
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(expressLayouts);
@@ -24,14 +27,19 @@ app.use(express.json({ limit: '1mb' }));
 app.use(methodOverride('_method'));
 app.use(express.static(path.join(__dirname, 'public')));
 
+const useSecureCookies = process.env.COOKIE_SECURE === 'true';
+
 app.use(
   session({
+    name: 'votaciones.sid',
     secret: process.env.SESSION_SECRET || 'dev-secret',
     resave: false,
     saveUninitialized: false,
+    proxy: true,
     cookie: {
       httpOnly: true,
-      secure: process.env.COOKIE_SECURE === 'true',
+      secure: useSecureCookies,
+      sameSite: 'lax',
       maxAge: 1000 * 60 * 60 * 12,
     },
   })

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'votaciones-shell-v9';
+const CACHE_NAME = 'votaciones-shell-v10';
 const SHELL = [
   '/css/app.css',
   '/js/app.js',
@@ -11,25 +11,33 @@ const SHELL = [
   '/icons/icon-512.png',
 ];
 
-function isCacheableRequest(request) {
+function isSameOriginHttpGet(request) {
   try {
+    if (request.method !== 'GET') return false;
     const url = new URL(request.url);
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
     if (url.origin !== self.location.origin) return false;
-    if (request.method !== 'GET') return false;
     return true;
   } catch {
     return false;
   }
 }
 
+function isStaticAsset(pathname) {
+  return (
+    pathname.startsWith('/css/') ||
+    pathname.startsWith('/js/') ||
+    pathname.startsWith('/icons/') ||
+    pathname === '/manifest.json'
+  );
+}
+
 async function putInCache(request, response) {
-  if (!isCacheableRequest(request) || !response || !response.ok) return;
+  if (!response || !response.ok) return;
   try {
     const cache = await caches.open(CACHE_NAME);
     await cache.put(request, response.clone());
   } catch (err) {
-    // Ignorar esquemas no soportados (chrome-extension, etc.)
     console.warn('Cache put omitido:', err.message);
   }
 }
@@ -62,50 +70,30 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  // No interceptar extensiones del navegador ni otros esquemas
-  if (!isCacheableRequest(request)) return;
+  // Nunca interceptar POST/login/logout/HTML: el navegador habla directo con el servidor
+  if (!isSameOriginHttpGet(request)) return;
 
   const url = new URL(request.url);
-  if (url.pathname.startsWith('/api/')) return;
-
-  const isDocument =
-    request.mode === 'navigate' ||
-    (request.headers.get('accept') || '').includes('text/html');
-
-  if (isDocument) {
-    event.respondWith(
-      fetch(request).catch(async () => {
-        const cached = await caches.match('/login');
-        return cached || Response.error();
-      })
-    );
-    return;
-  }
-
-  if (url.pathname.startsWith('/css/') || url.pathname.startsWith('/js/')) {
-    event.respondWith(
-      fetch(request)
-        .then(async (response) => {
-          await putInCache(request, response);
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
-    return;
-  }
-
-  // Solo iconos/manifest del mismo origen; no cachear CDN externos
   if (
-    url.pathname.startsWith('/icons/') ||
-    url.pathname === '/manifest.json'
+    url.pathname.startsWith('/api/') ||
+    url.pathname === '/login' ||
+    url.pathname === '/logout' ||
+    url.pathname === '/menu' ||
+    url.pathname.startsWith('/dashboard') ||
+    url.pathname.startsWith('/report')
   ) {
-    event.respondWith(
-      fetch(request)
-        .then(async (response) => {
-          await putInCache(request, response);
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
+    return;
   }
+
+  // Solo assets estáticos (CSS/JS/iconos)
+  if (!isStaticAsset(url.pathname)) return;
+
+  event.respondWith(
+    fetch(request)
+      .then(async (response) => {
+        await putInCache(request, response);
+        return response;
+      })
+      .catch(() => caches.match(request))
+  );
 });

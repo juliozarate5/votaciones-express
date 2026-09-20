@@ -31,6 +31,7 @@ La app ya:
 2. En Atlas → Network Access: permite `0.0.0.0/0` (o las IPs de Render) para no bloquear el wake.
 3. Opcional keep-alive: un cron externo (p. ej. [cron-job.org](https://cron-job.org)) pegando cada 10–14 min a `https://TU-APP.onrender.com/health` para reducir sleeps.
 4. Start command: `npm start` (ya construye CSS con `prestart`).
+5. La app usa `trust proxy` para que el login con cookies seguras funcione detrás de HTTPS de Render.
 
 ## Configuración
 

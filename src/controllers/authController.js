@@ -8,30 +8,42 @@ function showLogin(req, res) {
   return res.render('auth/login', { title: 'Ingreso' });
 }
 
+function redirectWithSession(req, res, path) {
+  // En Render hay que persistir la sesión antes del redirect
+  req.session.save((err) => {
+    if (err) {
+      console.error('Error guardando sesión:', err);
+      req.flash('error', 'No se pudo iniciar sesión. Intenta de nuevo.');
+      return res.redirect('/login');
+    }
+    return res.redirect(path);
+  });
+}
+
 function login(req, res) {
   const name = String(req.body.name || '').trim();
   const code = String(req.body.code || '').trim();
 
   if (!name || !code) {
     req.flash('error', 'Nombre y código son obligatorios');
-    return res.redirect('/login');
+    return redirectWithSession(req, res, '/login');
   }
 
   if (!/^\d+$/.test(code)) {
     req.flash('error', 'El código secreto debe ser numérico');
-    return res.redirect('/login');
+    return redirectWithSession(req, res, '/login');
   }
 
   const adminUser = (process.env.ADMIN_USER || 'admin').trim().toLowerCase();
-  const adminPassword = process.env.ADMIN_PASSWORD || '';
-  const reportCode = process.env.REPORT_CODE || '';
+  const adminPassword = String(process.env.ADMIN_PASSWORD || '').trim();
+  const reportCode = String(process.env.REPORT_CODE || '').trim();
 
   const normalizedName = normalizeReporterName(name);
 
   if (normalizedName === adminUser) {
     if (code !== adminPassword) {
       req.flash('error', 'Código de administrador incorrecto');
-      return res.redirect('/login');
+      return redirectWithSession(req, res, '/login');
     }
 
     req.session.user = {
@@ -41,12 +53,12 @@ function login(req, res) {
       reporterKey: adminUser,
     };
     req.flash('success', 'Bienvenido, administrador');
-    return res.redirect('/menu');
+    return redirectWithSession(req, res, '/menu');
   }
 
   if (code !== reportCode) {
     req.flash('error', 'Código de reporte incorrecto');
-    return res.redirect('/login');
+    return redirectWithSession(req, res, '/login');
   }
 
   const displayName = displayReporterName(name);
@@ -57,7 +69,7 @@ function login(req, res) {
     reporterKey: normalizedName,
   };
   req.flash('success', `Hola, ${displayName}`);
-  return res.redirect('/menu');
+  return redirectWithSession(req, res, '/menu');
 }
 
 function logout(req, res) {

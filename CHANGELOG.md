@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.4 — 2026-09-19
+
+- Fix login en Render: `trust proxy`, cookies `sameSite`, `session.save` antes del redirect.
+- Service Worker ya no intercepta `/login`, `/menu` ni POST (solo assets estáticos).
+
 ## 1.1.3 — 2026-09-19
 
 - Reintentos y reconexión automática a Mongo Atlas (útil con Render free + cold start).
