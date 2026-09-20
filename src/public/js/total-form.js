@@ -9,7 +9,15 @@
   const feedback = document.getElementById('total-feedback');
   const hintEl = document.getElementById('total-hint');
 
+  let context = { realtimeTotal: 0, hasFinal: false };
+  try {
+    context = JSON.parse(document.getElementById('total-context')?.textContent || '{}');
+  } catch {
+    /* ignore */
+  }
+
   let lastEdited = null;
+  let busy = false;
 
   function toInt(value) {
     if (value === '' || value === null || value === undefined) return null;
@@ -101,7 +109,6 @@
           women = suggested;
         }
       } else if (women !== null && men !== null) {
-        // Prefer keeping the last gender fields if both filled; recompute men from women when total changes
         const suggested = total - women;
         if (suggested >= 0) {
           menInput.value = String(suggested);
@@ -126,18 +133,7 @@
     suggestComplement();
   });
 
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const total = Number(form.total.value);
-    const women = Number(form.women.value);
-    const men = Number(form.men.value);
-
-    if (women + men !== total) {
-      errorEl.classList.remove('hidden');
-      return;
-    }
-    errorEl.classList.add('hidden');
-
+  async function submitTotal({ women, men, total }) {
     const clientId = window.OfflineQueue?.uuid?.() || crypto.randomUUID();
     const createdAt = new Date().toISOString();
     const payload = {
@@ -165,16 +161,36 @@
       const reported = data.reportedAt
         ? new Date(data.reportedAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'medium' })
         : when;
-      feedback.textContent = `Total guardado · ${reported}`;
+
+      // Reiniciar baseline local del conteo voto a voto
+      window.OfflineQueue?.writeBaseline?.({ female: 0, male: 0 });
+      try {
+        const queued = await window.OfflineQueue?.getAll?.();
+        const realtimeIds = (queued || [])
+          .filter((item) => item.type === 'realtime')
+          .map((item) => item.clientId);
+        if (realtimeIds.length && window.OfflineQueue?.removeByClientId) {
+          for (const id of realtimeIds) {
+            await window.OfflineQueue.removeByClientId(id);
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+
+      const deleted = Number(data.deletedRealtime || 0);
+      feedback.textContent = deleted
+        ? `Total final guardado · ${reported}. Se reiniciaron ${deleted} voto(s) a voto.`
+        : `Total final guardado · ${reported}. Este es ahora el reporte válido.`;
       feedback.className = 'min-h-[1.25rem] text-sm text-emerald-700';
       form.reset();
       setTimeout(() => {
         window.location.href = '/dashboard/mine';
-      }, 900);
+      }, 1100);
     } catch (err) {
       if (window.OfflineQueue) {
         await window.OfflineQueue.enqueue(payload);
-        feedback.textContent = `Sin conexión o servidor lento: guardado local · ${when}. Se sincronizará luego.`;
+        feedback.textContent = `Sin conexión o servidor lento: total guardado local · ${when}. Se sincronizará luego.`;
         feedback.className = 'min-h-[1.25rem] text-sm text-amber-700';
         form.reset();
         window.VotacionesApp?.updateOnlineUi();
@@ -182,6 +198,47 @@
         feedback.textContent = err.message || 'No se pudo guardar';
         feedback.className = 'min-h-[1.25rem] text-sm text-rose-700';
       }
+    }
+  }
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (busy) return;
+
+    const total = Number(form.total.value);
+    const women = Number(form.women.value);
+    const men = Number(form.men.value);
+
+    if (women + men !== total) {
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    errorEl.classList.add('hidden');
+
+    const realtimeNote =
+      context.realtimeTotal > 0
+        ? `Se reiniciarán ${context.realtimeTotal} voto(s) contados voto a voto.`
+        : 'Si luego vuelves a contar voto a voto, esos votos se sumarán a este total.';
+
+    const finalNote = context.hasFinal
+      ? ' Ya tienes un total final; este nuevo será el válido.'
+      : '';
+
+    const confirmed = await (window.VotacionesConfirm?.ask({
+      title: '¿Guardar total final?',
+      message: `Este total será el reporte válido y reemplaza el conteo voto a voto. ${realtimeNote}${finalNote}`,
+      confirmLabel: 'Sí, guardar total',
+      cancelLabel: 'Volver',
+      danger: true,
+    }) ?? Promise.resolve(false));
+
+    if (!confirmed) return;
+
+    busy = true;
+    try {
+      await submitTotal({ women, men, total });
+    } finally {
+      busy = false;
     }
   });
 })();

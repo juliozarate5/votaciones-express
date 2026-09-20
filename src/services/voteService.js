@@ -5,11 +5,37 @@ const {
   reporterNameFilter,
 } = require('../utils/names');
 
+async function getLatestTotal(reporterName) {
+  const filter = reporterNameFilter(reporterName);
+  return VoteReport.findOne({ ...filter, type: 'total' }).sort({ createdAt: -1 }).lean();
+}
+
+async function getLatestTotalDoc(reporterName) {
+  const filter = reporterNameFilter(reporterName);
+  return VoteReport.findOne({ ...filter, type: 'total' }).sort({ createdAt: -1 });
+}
+
+async function applyGenderDeltaToLatestFinal(reporterName, gender, delta) {
+  if (!['female', 'male'].includes(gender) || !delta) return null;
+  const doc = await getLatestTotalDoc(reporterName);
+  if (!doc) return null;
+
+  if (gender === 'female') {
+    doc.women = Math.max(0, Number(doc.women || 0) + delta);
+  } else {
+    doc.men = Math.max(0, Number(doc.men || 0) + delta);
+  }
+  doc.total = Number(doc.women || 0) + Number(doc.men || 0);
+  doc.syncedAt = new Date();
+  await doc.save();
+  return doc.toObject();
+}
+
 async function saveRealtimeVote({ reporterName, gender, clientId, createdAt }) {
   const key = normalizeReporterName(reporterName);
   const existing = await VoteReport.findOne({ clientId }).lean();
   if (existing) {
-    return { created: false, report: existing };
+    return { created: false, report: existing, latestFinal: await getLatestTotal(key) };
   }
 
   const report = await VoteReport.create({
@@ -21,7 +47,10 @@ async function saveRealtimeVote({ reporterName, gender, clientId, createdAt }) {
     createdAt: createdAt ? new Date(createdAt) : undefined,
   });
 
-  return { created: true, report };
+  // Si ya hay un total final, estos votos se suman al último final
+  const latestFinal = await applyGenderDeltaToLatestFinal(key, gender, 1);
+
+  return { created: true, report, latestFinal };
 }
 
 async function saveTotalReport({ reporterName, women, men, total, clientId, createdAt }) {
@@ -44,8 +73,12 @@ async function saveTotalReport({ reporterName, women, men, total, clientId, crea
 
   const existing = await VoteReport.findOne({ clientId }).lean();
   if (existing) {
-    return { created: false, report: existing };
+    return { created: false, report: existing, deletedRealtime: 0 };
   }
+
+  const filter = reporterNameFilter(key);
+  // El total final pasa a ser lo válido: se resetea el conteo voto a voto
+  const deleted = await VoteReport.deleteMany({ ...filter, type: 'realtime' });
 
   const report = await VoteReport.create({
     reporterName: key,
@@ -58,7 +91,11 @@ async function saveTotalReport({ reporterName, women, men, total, clientId, crea
     createdAt: createdAt ? new Date(createdAt) : undefined,
   });
 
-  return { created: true, report };
+  return {
+    created: true,
+    report,
+    deletedRealtime: deleted.deletedCount || 0,
+  };
 }
 
 async function syncBatch({ reporterName, items }) {
@@ -85,7 +122,12 @@ async function syncBatch({ reporterName, items }) {
           clientId: item.clientId,
           createdAt: item.createdAt,
         });
-        results.push({ clientId: item.clientId, ok: true, created: result.created });
+        results.push({
+          clientId: item.clientId,
+          ok: true,
+          created: result.created,
+          deletedRealtime: result.deletedRealtime,
+        });
       } else {
         results.push({ clientId: item.clientId, ok: false, error: 'Tipo inválido' });
       }
@@ -125,17 +167,22 @@ async function getReporterSummary(reporterName) {
     }
   }
 
-  const totalsAgg = totals.reduce(
-    (acc, row) => {
-      acc.women += row.women || 0;
-      acc.men += row.men || 0;
-      acc.total += row.total || 0;
-      return acc;
-    },
-    { women: 0, men: 0, total: 0 }
-  );
+  const latestFinal = totals.length ? totals[totals.length - 1] : null;
+  const totalsAgg = latestFinal
+    ? {
+        women: latestFinal.women || 0,
+        men: latestFinal.men || 0,
+        total: latestFinal.total || 0,
+      }
+    : { women: 0, men: 0, total: 0 };
 
-  return { reporterName: displayReporterName(key), realtime, totals, totalsAgg };
+  return {
+    reporterName: displayReporterName(key),
+    realtime,
+    totals,
+    totalsAgg,
+    latestFinal,
+  };
 }
 
 async function getAdminSummary() {
@@ -169,11 +216,14 @@ async function getAdminSummary() {
       if (!row.firstRealtimeAt || at < row.firstRealtimeAt) row.firstRealtimeAt = at;
       if (!row.lastRealtimeAt || at > row.lastRealtimeAt) row.lastRealtimeAt = at;
     } else if (report.type === 'total') {
-      row.totalWomen += report.women || 0;
-      row.totalMen += report.men || 0;
-      row.totalVotes += report.total || 0;
+      // Solo el último final cuenta como válido (ya incluye votos a voto posteriores)
       row.totalReports += 1;
-      if (!row.lastTotalAt || at > row.lastTotalAt) row.lastTotalAt = at;
+      if (!row.lastTotalAt || at >= row.lastTotalAt) {
+        row.lastTotalAt = at;
+        row.totalWomen = report.women || 0;
+        row.totalMen = report.men || 0;
+        row.totalVotes = report.total || 0;
+      }
     }
   }
 
@@ -206,11 +256,24 @@ async function getAdminSummary() {
 
 async function getRealtimeCounts(reporterName) {
   const filter = reporterNameFilter(reporterName);
-  const [female, male] = await Promise.all([
+  const [female, male, latestFinal] = await Promise.all([
     VoteReport.countDocuments({ ...filter, type: 'realtime', gender: 'female' }),
     VoteReport.countDocuments({ ...filter, type: 'realtime', gender: 'male' }),
+    getLatestTotal(reporterName),
   ]);
-  return { female, male, total: female + male };
+  return {
+    female,
+    male,
+    total: female + male,
+    latestFinal: latestFinal
+      ? {
+          women: latestFinal.women || 0,
+          men: latestFinal.men || 0,
+          total: latestFinal.total || 0,
+          createdAt: latestFinal.createdAt,
+        }
+      : null,
+  };
 }
 
 async function getLastRealtimeVote(reporterName) {
@@ -219,7 +282,8 @@ async function getLastRealtimeVote(reporterName) {
 }
 
 async function annulRealtimeVote({ reporterName, clientId }) {
-  const filter = reporterNameFilter(reporterName);
+  const key = normalizeReporterName(reporterName);
+  const filter = reporterNameFilter(key);
   const query = { ...filter, type: 'realtime' };
   if (clientId) query.clientId = clientId;
 
@@ -233,12 +297,16 @@ async function annulRealtimeVote({ reporterName, clientId }) {
     throw err;
   }
 
+  const gender = vote.gender;
   await VoteReport.deleteOne({ _id: vote._id });
+  await applyGenderDeltaToLatestFinal(key, gender, -1);
+
   return { deleted: true, vote: vote.toObject ? vote.toObject() : vote };
 }
 
 async function switchRealtimeGender({ reporterName, clientId, gender }) {
-  const filter = reporterNameFilter(reporterName);
+  const key = normalizeReporterName(reporterName);
+  const filter = reporterNameFilter(key);
   const query = { ...filter, type: 'realtime' };
   if (clientId) query.clientId = clientId;
 
@@ -261,9 +329,14 @@ async function switchRealtimeGender({ reporterName, clientId, gender }) {
     return { changed: false, vote: vote.toObject ? vote.toObject() : vote };
   }
 
+  const prevGender = vote.gender;
   vote.gender = nextGender;
   vote.syncedAt = new Date();
   await vote.save();
+
+  await applyGenderDeltaToLatestFinal(key, prevGender, -1);
+  await applyGenderDeltaToLatestFinal(key, nextGender, 1);
+
   return { changed: true, vote: vote.toObject ? vote.toObject() : vote };
 }
 
@@ -280,6 +353,7 @@ module.exports = {
   getReporterSummary,
   getAdminSummary,
   getRealtimeCounts,
+  getLatestTotal,
   getLastRealtimeVote,
   annulRealtimeVote,
   switchRealtimeGender,

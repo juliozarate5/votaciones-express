@@ -2,8 +2,28 @@
   <div class="mb-6">
     <%- include('../partials/back-link', { backHref: '/menu', backLabel: 'Volver al menú' }) %>
     <h1 class="mt-1 text-2xl font-semibold text-brand-900">Reportar solo totales</h1>
-    <p class="mt-1 text-sm text-slate-600">Opción aparte del conteo voto a voto. Envía mujeres, hombres y total de una vez.</p>
+    <p class="mt-1 text-sm text-slate-600">
+      Envía mujeres, hombres y total de una vez. Esto queda como el reporte válido y reinicia el conteo voto a voto.
+    </p>
   </div>
+
+  <% if (realtimeCounts && realtimeCounts.total > 0) { %>
+    <div class="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      Tienes <strong><%= realtimeCounts.total %></strong> voto(s) a voto
+      (<%= realtimeCounts.female %> mujeres, <%= realtimeCounts.male %> hombres).
+      Al guardar este total, ese conteo se reiniciará.
+    </div>
+  <% } %>
+
+  <% if (latestFinal) { %>
+    <div class="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+      Ya hay un total final válido:
+      <strong><%= latestFinal.women %></strong> mujeres,
+      <strong><%= latestFinal.men %></strong> hombres,
+      <strong><%= latestFinal.total %></strong> total.
+      Puedes enviar otro; el nuevo será el válido.
+    </div>
+  <% } %>
 
   <form id="total-form" action="/report/total" method="POST" class="space-y-4 rounded-2xl border border-brand-100 bg-white/90 p-6 shadow-sm">
     <div>
@@ -27,6 +47,11 @@
       Guardar total final
     </button>
   </form>
+
+  <script id="total-context" type="application/json"><%- JSON.stringify({
+    realtimeTotal: realtimeCounts ? realtimeCounts.total : 0,
+    hasFinal: Boolean(latestFinal),
+  }) %></script>
 </section>
 
 <script src="/js/total-form.js" defer></script>

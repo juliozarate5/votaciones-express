@@ -9,7 +9,8 @@ function stamp() {
 }
 
 /**
- * Prioridad: si hay total final, usa finales; si no, usa en vivo.
+ * Prioridad: si hay total final, usa el último final (ya incluye voto a voto posterior);
+ * si no, usa en vivo.
  */
 function toOfficialReport(summary) {
   const rows = (summary.rows || []).map((row) => {

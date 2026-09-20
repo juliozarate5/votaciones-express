@@ -25,6 +25,21 @@
     </div>
   </div>
 
+  <div
+    id="final-banner"
+    class="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 <%= latestFinal ? '' : 'hidden' %>"
+  >
+    <p class="font-semibold">Hay un total final válido</p>
+    <p id="final-banner-text" class="mt-1">
+      <% if (latestFinal) { %>
+        Mujeres <strong><%= latestFinal.women %></strong> ·
+        Hombres <strong><%= latestFinal.men %></strong> ·
+        Total <strong><%= latestFinal.total %></strong>.
+        Los votos que marques aquí se suman a ese total.
+      <% } %>
+    </p>
+  </div>
+
   <div class="grid gap-3 sm:grid-cols-2">
     <button type="button" id="btn-female" class="vote-btn bg-rose-600 hover:bg-rose-700" data-gender="female">
       Mujer
@@ -58,6 +73,7 @@
   </div>
 
   <script id="initial-last-vote" type="application/json"><%- JSON.stringify(lastVote || null) %></script>
+  <script id="initial-latest-final" type="application/json"><%- JSON.stringify(latestFinal || null) %></script>
 
   <div class="mt-8 flex justify-center">
     <a href="/dashboard/mine" class="back-link" style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.85rem 1.15rem;border:2px solid #0f4c5c;border-radius:0.9rem;background:#d5efec;color:#0a2f38;font-size:1.125rem;font-weight:700;text-decoration:none;">

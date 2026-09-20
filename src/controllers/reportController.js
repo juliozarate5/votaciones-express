@@ -15,6 +15,7 @@ async function showRealtime(req, res) {
   res.render('reports/realtime', {
     title: 'Contar voto a voto',
     counts,
+    latestFinal: counts.latestFinal || null,
     lastVote: lastVote
       ? {
           clientId: lastVote.clientId,
@@ -26,8 +27,16 @@ async function showRealtime(req, res) {
 }
 
 async function showTotal(req, res) {
+  const key = reporterKey(req);
+  const counts = await voteService.getRealtimeCounts(key);
   res.render('reports/total', {
     title: 'Reportar solo totales',
+    realtimeCounts: {
+      female: counts.female,
+      male: counts.male,
+      total: counts.total,
+    },
+    latestFinal: counts.latestFinal || null,
   });
 }
 
@@ -52,6 +61,7 @@ async function createRealtime(req, res) {
       created: result.created,
       clientId,
       counts,
+      latestFinal: counts.latestFinal,
       reportedAt: result.report?.createdAt || result.report?.syncedAt || new Date(),
     });
   } catch (err) {
@@ -85,11 +95,17 @@ async function createTotal(req, res) {
         ok: true,
         created: result.created,
         clientId,
+        deletedRealtime: result.deletedRealtime || 0,
         reportedAt: result.report?.createdAt || result.report?.syncedAt || new Date(),
       });
     }
 
-    req.flash('success', result.created ? 'Total final registrado' : 'Total ya estaba registrado');
+    req.flash(
+      'success',
+      result.created
+        ? `Total final registrado. Se reinició el conteo voto a voto (${result.deletedRealtime || 0} voto(s)).`
+        : 'Total ya estaba registrado'
+    );
     return res.redirect('/dashboard/mine');
   } catch (err) {
     console.error(err);
