@@ -55,17 +55,17 @@
       </p>
     </div>
 
-    <div class="flex flex-col gap-2.5">
+    <div style="display:flex;flex-direction:column;gap:0.65rem;">
       <button
         id="btn-reset"
         type="button"
-        class="w-full rounded-xl bg-rose-700 px-4 py-3.5 text-base font-extrabold text-white transition hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
+        style="width:100%;border:none;border-radius:0.75rem;background:#b91c1c;color:#fff;padding:0.9rem 1rem;font-size:1.05rem;font-weight:800;cursor:pointer;"
       >
         Confirmar borrado
       </button>
       <a
         href="/menu"
-        class="action-btn action-btn-secondary w-full text-center"
+        style="display:block;width:100%;box-sizing:border-box;text-align:center;border:2px solid #cbd5e1;border-radius:0.75rem;background:#fff;color:#334155;padding:0.85rem 1rem;font-size:1rem;font-weight:700;text-decoration:none;"
       >
         Cancelar
       </a>
@@ -94,14 +94,14 @@
       <button
         type="button"
         id="reset-modal-confirm"
-        class="w-full rounded-xl bg-rose-700 px-4 py-3 text-sm font-bold text-white hover:bg-rose-800 sm:w-auto sm:min-w-[10rem]"
+        style="width:100%;border:none;border-radius:0.75rem;background:#b91c1c;color:#fff;padding:0.75rem 1rem;font-size:0.95rem;font-weight:700;cursor:pointer;"
       >
         Sí, borrar todo
       </button>
       <button
         type="button"
         id="reset-modal-cancel"
-        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 sm:w-auto sm:min-w-[8rem]"
+        style="width:100%;border:2px solid #cbd5e1;border-radius:0.75rem;background:#fff;color:#334155;padding:0.75rem 1rem;font-size:0.95rem;font-weight:700;cursor:pointer;"
       >
         Volver
       </button>
@@ -122,7 +122,8 @@
 
     function refresh() {
       const ok = checkbox.checked && /^\d+$/.test(String(codeInput.value || '').trim());
-      btn.disabled = !ok;
+      btn.style.opacity = ok ? '1' : '0.7';
+      btn.style.cursor = ok ? 'pointer' : 'pointer';
     }
 
     function showError(message) {

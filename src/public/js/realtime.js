@@ -171,12 +171,17 @@
     if (!lastVote || busy || !window.OfflineQueue) return;
 
     const nextGender = lastVote.gender === 'female' ? 'male' : 'female';
-    const confirmMsg =
-      action === 'annul'
-        ? `¿Anular el último voto (${genderLabel(lastVote.gender)})?`
-        : `¿Cambiar el último voto de ${genderLabel(lastVote.gender)} a ${genderLabel(nextGender)}?`;
-
-    if (!window.confirm(confirmMsg)) return;
+    const confirmed = await (window.VotacionesConfirm?.ask({
+      title: action === 'annul' ? '¿Anular último voto?' : '¿Cambiar último voto?',
+      message:
+        action === 'annul'
+          ? `Se anulará el último voto (${genderLabel(lastVote.gender)}). Esta acción actualiza el conteo.`
+          : `Se cambiará de ${genderLabel(lastVote.gender)} a ${genderLabel(nextGender)}.`,
+      confirmLabel: action === 'annul' ? 'Sí, anular' : 'Sí, cambiar',
+      cancelLabel: 'Volver',
+      danger: action === 'annul',
+    }) ?? Promise.resolve(false));
+    if (!confirmed) return;
 
     busy = true;
     btnSwitch.disabled = true;

@@ -1,10 +1,11 @@
-const CACHE_NAME = 'votaciones-shell-v13';
+const CACHE_NAME = 'votaciones-shell-v14';
 
 const SHELL = [
   '/offline.html',
   '/css/app.css',
   '/js/app.js',
   '/js/offline-queue.js',
+  '/js/confirm-dialog.js',
   '/js/offline-page.js',
   '/js/realtime.js',
   '/js/total-form.js',
