@@ -48,7 +48,7 @@
         '/report/realtime',
         '/report/total',
         '/css/app.css',
-        '/css/app.css?v=12',
+        '/css/app.css?v=13',
         '/js/offline-queue.js',
         '/js/realtime.js',
         '/js/offline-page.js',
